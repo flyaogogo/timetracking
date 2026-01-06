@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.timetracking.mapper.TaskMapper">
+    
+    <select id="selectTasksByProject" resultType="com.timetracking.entity.Task">
+        SELECT t.*, p.project_name,
+               u1.real_name as assignee_name,
+               u2.real_name as reviewer_name,
+               COALESCE(te_stats.actual_hours, 0) as actual_hours,
+               CASE WHEN t.end_date &lt; CURDATE() AND t.status != 'COMPLETED'
+               THEN DATEDIFF(CURDATE(), t.end_date) ELSE 0 END as delay_days
+        FROM tasks t
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users u1 ON t.assignee_id = u1.id
+        LEFT JOIN users u2 ON t.reviewer_id = u2.id
+        LEFT JOIN (
+          SELECT te.task_id, SUM(te.duration) as actual_hours
+          FROM time_entries te
+          WHERE te.status = 'APPROVED'
+          GROUP BY te.task_id
+        ) te_stats ON t.id = te_stats.task_id
+        WHERE t.project_id = #{projectId}
+        ORDER BY t.create_time DESC
+    </select>
+    
+    <select id="selectUserRelatedTasks" resultType="com.timetracking.entity.Task">
+        SELECT t.*, p.project_name,
+               u1.real_name as assignee_name,
+               u2.real_name as reviewer_name,
+               COALESCE(te_stats.actual_hours, 0) as actual_hours,
+               CASE WHEN t.end_date &lt; CURDATE() AND t.status != 'COMPLETED'
+               THEN DATEDIFF(CURDATE(), t.end_date) ELSE 0 END as delay_days
+        FROM tasks t
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users u1 ON t.assignee_id = u1.id
+        LEFT JOIN users u2 ON t.reviewer_id = u2.id
+        LEFT JOIN (
+          SELECT te.task_id, SUM(te.duration) as actual_hours
+          FROM time_entries te
+          WHERE te.status = 'APPROVED'
+          GROUP BY te.task_id
+        ) te_stats ON t.id = te_stats.task_id
+        INNER JOIN project_members pm ON t.project_id = pm.project_id
+        WHERE pm.user_id = #{userId} AND t.assignee_id = #{userId}
+        <if test='keyword != null and keyword != ""'>
+            AND (t.task_name LIKE CONCAT('%', #{keyword}, '%')
+            OR t.description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+    
+    <select id="selectUserRelatedTasksByProject" resultType="com.timetracking.entity.Task">
+        SELECT t.*, p.project_name,
+               u1.real_name as assignee_name,
+               u2.real_name as reviewer_name,
+               COALESCE(te_stats.actual_hours, 0) as actual_hours,
+               CASE WHEN t.end_date &lt; CURDATE() AND t.status != 'COMPLETED'
+               THEN DATEDIFF(CURDATE(), t.end_date) ELSE 0 END as delay_days
+        FROM tasks t
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users u1 ON t.assignee_id = u1.id
+        LEFT JOIN users u2 ON t.reviewer_id = u2.id
+        LEFT JOIN (
+          SELECT te.task_id, SUM(te.duration) as actual_hours
+          FROM time_entries te
+          WHERE te.status = 'APPROVED'
+          GROUP BY te.task_id
+        ) te_stats ON t.id = te_stats.task_id
+        INNER JOIN project_members pm ON t.project_id = pm.project_id
+        WHERE pm.user_id = #{userId} AND t.assignee_id = #{userId} AND t.project_id = #{projectId}
+        <if test='keyword != null and keyword != ""'>
+            AND (t.task_name LIKE CONCAT('%', #{keyword}, '%')
+            OR t.description LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+    
+</mapper>

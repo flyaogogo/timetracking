@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.timetracking.mapper.TimeEntryMapper">
+    
+    <resultMap id="TimeEntryWithDetailsMap" type="com.timetracking.entity.TimeEntry">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="project_id" property="projectId"/>
+        <result column="task_id" property="taskId"/>
+        <result column="work_date" property="workDate"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="duration" property="duration"/>
+        <result column="work_type" property="workType"/>
+        <result column="description" property="description"/>
+        <result column="status" property="status"/>
+        <result column="approver_id" property="approverId"/>
+        <result column="approve_time" property="approveTime"/>
+        <result column="approve_comment" property="approveComment"/>
+        <result column="activity_type" property="activityType"/>
+        <result column="productivity_score" property="productivityScore"/>
+        <result column="billable_flag" property="billableFlag"/>
+        <result column="billing_rate" property="billingRate"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <!-- 关联字段 -->
+        <result column="userName" property="userName"/>
+        <result column="projectName" property="projectName"/>
+        <result column="taskName" property="taskName"/>
+        <result column="approverName" property="approverName"/>
+    </resultMap>
+    
+    <select id="selectUserTimeEntries" resultMap="TimeEntryWithDetailsMap">
+        SELECT te.*, u.real_name as userName,
+               p.project_name as projectName, t.task_name as taskName,
+               u2.real_name as approverName
+        FROM time_entries te
+        LEFT JOIN users u ON te.user_id = u.id
+        LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN tasks t ON te.task_id = t.id
+        LEFT JOIN users u2 ON te.approver_id = u2.id
+        WHERE te.user_id = #{userId}
+        <if test='status != null and status != ""'>
+            AND te.status = #{status}
+        </if>
+        <if test='startDate != null and startDate != ""'>
+            AND te.work_date &gt;= #{startDate}
+        </if>
+        <if test='endDate != null and endDate != ""'>
+            AND te.work_date &lt;= #{endDate}
+        </if>
+        ORDER BY te.work_date DESC, te.create_time DESC
+    </select>
+    
+    <select id="selectTimeEntriesWithDetails" resultMap="TimeEntryWithDetailsMap">
+        SELECT te.*, u.real_name as userName,
+               p.project_name as projectName, t.task_name as taskName,
+               u2.real_name as approverName
+        FROM time_entries te
+        LEFT JOIN users u ON te.user_id = u.id
+        LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN tasks t ON te.task_id = t.id
+        LEFT JOIN users u2 ON te.approver_id = u2.id
+        ORDER BY te.work_date DESC, te.create_time DESC
+    </select>
+    
+    <select id="selectPendingApprovals" resultMap="TimeEntryWithDetailsMap">
+        SELECT te.*, u.real_name as userName,
+               p.project_name as projectName, t.task_name as taskName,
+               u2.real_name as approverName
+        FROM time_entries te
+        LEFT JOIN users u ON te.user_id = u.id
+        LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN tasks t ON te.task_id = t.id
+        LEFT JOIN users u2 ON te.approver_id = u2.id
+        WHERE te.status = 'PENDING'
+        ORDER BY te.work_date ASC, te.create_time ASC
+    </select>
+    
+    <select id="selectPendingApprovalsByManager" resultMap="TimeEntryWithDetailsMap">
+        SELECT te.*, u.real_name as userName,
+               p.project_name as projectName, t.task_name as taskName,
+               u2.real_name as approverName
+        FROM time_entries te
+        LEFT JOIN users u ON te.user_id = u.id
+        LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN tasks t ON te.task_id = t.id
+        LEFT JOIN users u2 ON te.approver_id = u2.id
+        WHERE te.status = 'PENDING'
+        AND te.project_id IN (
+            SELECT DISTINCT pm.project_id FROM project_members pm 
+            WHERE pm.user_id = #{managerId} AND pm.is_project_manager = 1
+        )
+        <if test='keyword != null and keyword != ""'>
+            AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
+            OR p.project_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY te.work_date ASC, te.create_time ASC
+    </select>
+    
+    <select id="selectTimeEntryWithDetails" resultMap="TimeEntryWithDetailsMap">
+        SELECT te.*, u.real_name as userName,
+               p.project_name as projectName, t.task_name as taskName,
+               u2.real_name as approverName
+        FROM time_entries te
+        LEFT JOIN users u ON te.user_id = u.id
+        LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN tasks t ON te.task_id = t.id
+        LEFT JOIN users u2 ON te.approver_id = u2.id
+        WHERE te.id = #{id}
+    </select>
+    
+</mapper>

@@ -8,6 +8,9 @@ import com.timetracking.vo.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/project-statistics")
 @CrossOrigin
@@ -143,6 +146,38 @@ public class ProjectStatisticsController {
             return Result.success("获取质量统计成功", statistics.getQualityStats());
         } catch (Exception e) {
             return Result.error("获取质量统计失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取项目报表摘要信息
+     * 用于项目报表查看页面的快速统计展示
+     */
+    @GetMapping("/{projectId}/summary")
+    public Result getProjectSummary(@PathVariable Long projectId) {
+        try {
+            // 检查项目访问权限
+            if (!hasProjectAccess(projectId)) {
+                return Result.error("无权限访问该项目统计");
+            }
+            
+            ProjectStatisticsVO statistics = projectStatisticsService.getProjectStatistics(projectId);
+            if (statistics == null) {
+                return Result.error("项目不存在");
+            }
+            
+            ProjectStatisticsVO.ProgressStats progressStats = statistics.getProgressStats();
+            
+            // 构建报表摘要数据
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("totalTasks", progressStats.getTotalTasks());
+            summary.put("completedTasks", progressStats.getCompletedTasks());
+            summary.put("totalHours", progressStats.getActualHours());
+            summary.put("completionRate", progressStats.getProgressPercentage().intValue());
+            
+            return Result.success("获取项目报表摘要成功", summary);
+        } catch (Exception e) {
+            return Result.error("获取项目报表摘要失败：" + e.getMessage());
         }
     }
     

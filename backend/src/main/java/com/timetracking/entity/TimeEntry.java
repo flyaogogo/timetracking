@@ -67,6 +67,9 @@ public class TimeEntry {
     @TableField(exist = false)
     private String approverName;
     
+    @TableField(exist = false)
+    private String managerName;
+    
     public enum WorkType {
         NORMAL, OVERTIME, HOLIDAY
     }

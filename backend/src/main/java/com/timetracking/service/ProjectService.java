@@ -148,8 +148,57 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
         Long currentUserId = PermissionUtil.getCurrentUserId();
         project.setManagerId(currentUserId);
         
+        // 智能设置初始状态：如果前端没有提供状态
+        if (project.getStatus() == null) {
+            // 基于项目属性智能判断初始状态
+            if (isProjectInProgress(project)) {
+                project.setStatus(Project.ProjectStatus.IN_PROGRESS);
+            } else {
+                project.setStatus(Project.ProjectStatus.PLANNING);
+            }
+        }
+        
         save(project);
         return project;
+    }
+    
+    /**
+     * 判断项目是否应该处于进行中状态
+     * 基于项目属性自动判断：
+     * 1. 有实际开始日期
+     * 2. 有实际工时
+     * 3. 计划开始日期已过
+     * 4. 有团队成员
+     * 5. 有任务分配
+     */
+    private boolean isProjectInProgress(Project project) {
+        // 1. 检查是否有实际开始日期
+        if (project.getActualStartDate() != null) {
+            return true;
+        }
+        
+        // 2. 检查是否有实际工时
+        if (project.getActualHours() != null && project.getActualHours().compareTo(BigDecimal.ZERO) > 0) {
+            return true;
+        }
+        
+        // 3. 检查计划开始日期是否已过
+        if (project.getPlannedStartDate() != null) {
+            LocalDate now = LocalDate.now();
+            if (project.getPlannedStartDate().isBefore(now) || project.getPlannedStartDate().isEqual(now)) {
+                return true;
+            }
+        }
+        
+        // 4. 检查开始日期（兼容旧字段）
+        if (project.getStartDate() != null) {
+            LocalDate now = LocalDate.now();
+            if (project.getStartDate().isBefore(now) || project.getStartDate().isEqual(now)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**

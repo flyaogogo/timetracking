@@ -120,7 +120,8 @@
                     <el-icon><TrendCharts /></el-icon>
                     统计分析
                   </el-dropdown-item>
-                  <el-dropdown-item command="status">
+                  <!-- 只有项目经理才显示状态管理按钮 -->
+                  <el-dropdown-item command="status" v-if="isProjectManager(row)">
                     <el-icon><Setting /></el-icon>
                     状态管理
                   </el-dropdown-item>
@@ -737,6 +738,12 @@ const getStatusText = (status) => {
     'PAUSED': '已暂停'
   }
   return textMap[status] || status
+}
+
+// 判断当前用户是否是项目的项目经理
+const isProjectManager = (row) => {
+  // 检查是否有managerId字段，并且当前用户ID与managerId匹配
+  return userStore.user?.id && row.managerId && row.managerId === userStore.user.id
 }
 
 onMounted(() => {

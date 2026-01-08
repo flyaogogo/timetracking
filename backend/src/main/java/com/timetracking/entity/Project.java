@@ -61,7 +61,7 @@ public class Project {
     private String contractNumber;
     
     // 项目状态和管理
-    private ProjectStatus status;
+    private ProjectStatus status = ProjectStatus.PLANNING;
     
     private Long managerId;
     

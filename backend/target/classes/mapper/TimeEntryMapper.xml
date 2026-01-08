@@ -28,6 +28,7 @@
         <result column="projectName" property="projectName"/>
         <result column="taskName" property="taskName"/>
         <result column="approverName" property="approverName"/>
+        <result column="managerName" property="managerName"/>
     </resultMap>
     
     <select id="selectUserTimeEntries" resultMap="TimeEntryWithDetailsMap">
@@ -80,20 +81,26 @@
     <select id="selectPendingApprovalsByManager" resultMap="TimeEntryWithDetailsMap">
         SELECT te.*, u.real_name as userName,
                p.project_name as projectName, t.task_name as taskName,
-               u2.real_name as approverName
+               u2.real_name as approverName,
+               u3.real_name as managerName
         FROM time_entries te
         LEFT JOIN users u ON te.user_id = u.id
         LEFT JOIN projects p ON te.project_id = p.id
+        LEFT JOIN users u3 ON p.manager_id = u3.id
         LEFT JOIN tasks t ON te.task_id = t.id
         LEFT JOIN users u2 ON te.approver_id = u2.id
         WHERE te.status = 'PENDING'
-        AND te.project_id IN (
-            SELECT DISTINCT pm.project_id FROM project_members pm 
-            WHERE pm.user_id = #{managerId} AND pm.is_project_manager = 1
+        AND (
+            -- 项目任务审核人（如果任务设置了审核人）
+            (t.approver_id = #{managerId} AND t.approver_id IS NOT NULL)
+            OR
+            -- 没有设置任务审核人时，项目经理审核自己项目的工时
+            (p.manager_id = #{managerId} AND (t.approver_id IS NULL OR t.approver_id = #{managerId}))
         )
         <if test='keyword != null and keyword != ""'>
             AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
-            OR p.project_name LIKE CONCAT('%', #{keyword}, '%'))
+            OR p.project_name LIKE CONCAT('%', #{keyword}, '%')
+            OR t.task_name LIKE CONCAT('%', #{keyword}, '%'))
         </if>
         ORDER BY te.work_date ASC, te.create_time ASC
     </select>

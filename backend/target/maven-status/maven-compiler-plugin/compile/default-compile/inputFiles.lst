@@ -45,8 +45,10 @@ C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timet
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\config\MybatisPlusConfig.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\mapper\UserOrganizationMapper.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\service\ProjectRoleDisplayService.java
+C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\mapper\ProjectStatusHistoryMapper.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\vo\ProjectStatisticsVO.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\controller\UserController.java
+C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\service\ProjectStatusHistoryService.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\controller\TaskController.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\entity\Organization.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\service\ProjectCostService.java
@@ -66,3 +68,4 @@ C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timet
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\entity\User.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\mapper\ProjectRolePermissionMapper.java
 C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\controller\OrganizationController.java
+C:\work\src\timetracking\swan-model\timetracking\backend\src\main\java\com\timetracking\entity\ProjectStatusHistory.java

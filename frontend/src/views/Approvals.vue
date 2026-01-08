@@ -77,6 +77,13 @@
           </template>
         </el-table-column>
         
+        <el-table-column prop="managerName" label="项目经理" width="120">
+          <template #default="{ row }">
+            <span v-if="row.managerName">{{ row.managerName }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        
         <el-table-column prop="startTime" label="开始时间" width="100" />
         <el-table-column prop="endTime" label="结束时间" width="100" />
         
@@ -154,6 +161,7 @@
         <el-descriptions-item label="工作日期">{{ currentDetail.workDate }}</el-descriptions-item>
         <el-descriptions-item label="员工">{{ currentDetail.userName }}</el-descriptions-item>
         <el-descriptions-item label="项目">{{ currentDetail.projectName }}</el-descriptions-item>
+        <el-descriptions-item label="项目经理">{{ currentDetail.managerName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="任务">{{ currentDetail.taskName || '无' }}</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ currentDetail.startTime }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentDetail.endTime }}</el-descriptions-item>

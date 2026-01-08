@@ -112,10 +112,7 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "  WHERE te.status = 'APPROVED' " +
             "  GROUP BY te.project_id" +
             ") te_stats ON p.id = te_stats.project_id " +
-            "WHERE p.id IN (" +
-            "  SELECT DISTINCT pm.project_id FROM project_members pm " +
-            "  WHERE pm.user_id = #{userId} AND pm.is_project_manager = 1" +
-            ") " +
+            "WHERE p.manager_id = #{userId} " +
             "ORDER BY p.create_time DESC" +
             "</script>")
     IPage<Project> selectManagedProjects(Page<Project> page, @Param("userId") Long userId);

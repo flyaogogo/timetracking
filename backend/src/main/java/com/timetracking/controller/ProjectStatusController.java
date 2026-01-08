@@ -1,7 +1,9 @@
 package com.timetracking.controller;
 
 import com.timetracking.entity.Project;
+import com.timetracking.entity.ProjectStatusHistory;
 import com.timetracking.service.ProjectService;
+import com.timetracking.service.ProjectStatusHistoryService;
 import com.timetracking.vo.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,19 +11,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * 项目状态管理控制器
  */
 @RestController
-@RequestMapping("/api/project-status")
+@RequestMapping("/project-status")
 public class ProjectStatusController {
     
     private static final Logger logger = LoggerFactory.getLogger(ProjectStatusController.class);
     
     @Autowired
     private ProjectService projectService;
+    
+    @Autowired
+    private ProjectStatusHistoryService projectStatusHistoryService;
     
     /**
      * 获取项目状态说明
@@ -30,13 +36,48 @@ public class ProjectStatusController {
     public Result<Map<String, Object>> getProjectStatusDefinitions() {
         Map<String, Object> definitions = new HashMap<>();
         
-        // 项目状态定义
+        // 项目状态定义 - 更详细的状态描述
         Map<String, Object> statusDefinitions = new HashMap<>();
-        statusDefinitions.put("PLANNING", createStatusInfo("规划中", "项目正在进行需求分析、设计和计划制定", "#909399", new String[]{"IN_PROGRESS", "CANCELLED"}));
-        statusDefinitions.put("IN_PROGRESS", createStatusInfo("进行中", "项目正在开发实施阶段", "#E6A23C", new String[]{"COMPLETED", "PAUSED", "CANCELLED"}));
-        statusDefinitions.put("COMPLETED", createStatusInfo("已完成", "项目已成功交付并验收", "#67C23A", new String[]{}));
-        statusDefinitions.put("PAUSED", createStatusInfo("已暂停", "项目因各种原因暂时停止", "#F56C6C", new String[]{"IN_PROGRESS", "CANCELLED"}));
-        statusDefinitions.put("CANCELLED", createStatusInfo("已取消", "项目被永久取消", "#909399", new String[]{}));
+        statusDefinitions.put("PLANNING", createDetailedStatusInfo(
+            "规划中", 
+            "项目处于初始规划阶段，包括需求分析、系统设计、资源规划和进度安排等工作。", 
+            "项目团队正在制定详细的项目计划，尚未开始实际开发工作。",
+            "适合新启动的项目，或者正在进行前期准备的项目。",
+            "#909399", 
+            new String[]{"IN_PROGRESS", "CANCELLED"}
+        ));
+        statusDefinitions.put("IN_PROGRESS", createDetailedStatusInfo(
+            "进行中", 
+            "项目正在按照计划进行开发实施，团队成员正在执行各项任务。", 
+            "项目已正式启动，团队成员正在进行开发、测试、集成等工作。",
+            "适合已经开始实施，且有实际工作进展的项目。",
+            "#E6A23C", 
+            new String[]{"COMPLETED", "PAUSED", "CANCELLED"}
+        ));
+        statusDefinitions.put("COMPLETED", createDetailedStatusInfo(
+            "已完成", 
+            "项目已成功交付并通过验收，所有工作已完成。", 
+            "项目的所有目标都已实现，交付物已验收通过，项目正式结束。",
+            "适合已经完成所有工作并通过验收的项目。",
+            "#67C23A", 
+            new String[]{}
+        ));
+        statusDefinitions.put("PAUSED", createDetailedStatusInfo(
+            "已暂停", 
+            "项目因各种原因暂时停止，等待问题解决后可以恢复。", 
+            "项目遇到了暂时的障碍，如资源不足、需求变更、技术难题等，需要暂停等待解决。",
+            "适合遇到临时问题需要暂停的项目。",
+            "#F56C6C", 
+            new String[]{"IN_PROGRESS", "CANCELLED"}
+        ));
+        statusDefinitions.put("CANCELLED", createDetailedStatusInfo(
+            "已取消", 
+            "项目被永久取消，不会再继续进行。", 
+            "项目因各种原因被终止，如业务需求变化、资源枯竭、技术不可行等。",
+            "适合确认不再继续进行的项目。",
+            "#909399", 
+            new String[]{}
+        ));
         
         definitions.put("statusDefinitions", statusDefinitions);
         
@@ -92,12 +133,25 @@ public class ProjectStatusController {
                 return Result.error("不允许从 " + getStatusText(project.getStatus()) + " 转换到 " + getStatusText(status));
             }
             
+            // 保存旧状态
+            Project.ProjectStatus oldStatus = project.getStatus();
+            
             // 更新项目状态
             project.setStatus(status);
             boolean success = projectService.updateById(project);
             
             if (success) {
-                logger.info("项目状态更新成功，项目ID: {}, 新状态: {}", projectId, newStatus);
+                // 保存状态变更历史
+                ProjectStatusHistory history = new ProjectStatusHistory();
+                history.setProjectId(projectId);
+                history.setOldStatus(oldStatus.name());
+                history.setNewStatus(status.name());
+                history.setChangeReason(reason);
+                history.setChangedBy("admin"); // 这里应该从JWT中获取当前登录用户
+                history.setChangedTime(new java.util.Date());
+                projectStatusHistoryService.saveStatusHistory(history);
+                
+                logger.info("项目状态更新成功，项目ID: {}, 旧状态: {}, 新状态: {}", projectId, oldStatus, newStatus);
                 return Result.success("项目状态更新成功");
             } else {
                 return Result.error("项目状态更新失败");
@@ -114,28 +168,47 @@ public class ProjectStatusController {
      */
     @GetMapping("/{projectId}/history")
     public Result<Map<String, Object>> getProjectStatusHistory(@PathVariable Long projectId) {
-        // 这里可以实现状态变更历史记录功能
-        // 目前返回当前状态信息
         try {
             Project project = projectService.getById(projectId);
             if (project == null) {
                 return Result.error("项目不存在");
             }
             
-            Map<String, Object> history = new HashMap<>();
-            history.put("currentStatus", project.getStatus().name());
-            history.put("currentStatusText", getStatusText(project.getStatus()));
-            history.put("projectName", project.getProjectName());
+            // 获取状态变更历史列表
+            List<ProjectStatusHistory> historyList = projectStatusHistoryService.getByProjectId(projectId);
             
-            return Result.success("获取项目状态历史成功", history);
+            Map<String, Object> result = new HashMap<>();
+            result.put("projectId", projectId);
+            result.put("projectName", project.getProjectName());
+            result.put("currentStatus", project.getStatus().name());
+            result.put("currentStatusText", getStatusText(project.getStatus()));
+            result.put("historyList", historyList);
+            result.put("totalCount", historyList.size());
+            
+            return Result.success("获取项目状态历史成功", result);
         } catch (Exception e) {
             logger.error("获取项目状态历史失败", e);
-            return Result.error("获取项目状态历史失败");
+            return Result.error("获取项目状态历史失败: " + e.getMessage());
         }
     }
     
     /**
-     * 创建状态信息对象
+     * 创建详细状态信息对象
+     * 包含：状态文本、简短描述、详细说明、适用场景、颜色、允许的转换
+     */
+    private Map<String, Object> createDetailedStatusInfo(String text, String shortDesc, String longDesc, String applicable, String color, String[] allowedTransitions) {
+        Map<String, Object> info = new HashMap<>();
+        info.put("text", text);
+        info.put("shortDescription", shortDesc);
+        info.put("longDescription", longDesc);
+        info.put("applicableScenarios", applicable);
+        info.put("color", color);
+        info.put("allowedTransitions", allowedTransitions);
+        return info;
+    }
+    
+    /**
+     * 创建简洁状态信息对象（兼容旧接口）
      */
     private Map<String, Object> createStatusInfo(String text, String description, String color, String[] allowedTransitions) {
         Map<String, Object> info = new HashMap<>();

@@ -92,10 +92,10 @@
         WHERE te.status = 'PENDING'
         AND (
             -- 项目任务审核人（如果任务设置了审核人）
-            (t.approver_id = #{managerId} AND t.approver_id IS NOT NULL)
+            (t.reviewer_id = #{managerId} AND t.reviewer_id IS NOT NULL)
             OR
             -- 没有设置任务审核人时，项目经理审核自己项目的工时
-            (p.manager_id = #{managerId} AND (t.approver_id IS NULL OR t.approver_id = #{managerId}))
+            (p.manager_id = #{managerId} AND (t.reviewer_id IS NULL OR t.reviewer_id = #{managerId}))
         )
         <if test='keyword != null and keyword != ""'>
             AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')

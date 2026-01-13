@@ -608,6 +608,25 @@ insert  into `users`(`id`,`username`,`password`,`real_name`,`email`,`phone`,`dep
 (9,'dev003','$2a$10$fPCDdvUfge.EUVj5jHcJwOEbyMT1aMhxk.wv8m8pMZcNTCSR7xTi2','研发003','dev@d.com','13256485987','','后端工程师','DEVELOPER',10000.00,'MIDDLE',NULL,1,'2025-12-31 15:07:48','2025-12-31 15:07:48'),
 (10,'dev004','$2a$10$1bbZ584mpSJoanDhbD6AT.ouwLktA.tjGtkbBhdZReiWcPKNsecby','研发004','t@t.com','13695452514','','Java开发','DEVELOPER',0.00,'MIDDLE',NULL,1,'2025-12-31 15:08:53','2025-12-31 15:08:53');
 
+
+
+
+/*创建项目状态变更历史表*/
+CREATE TABLE IF NOT EXISTS project_status_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    project_id BIGINT NOT NULL COMMENT '项目ID',
+    old_status VARCHAR(20) NOT NULL COMMENT '变更前状态',
+    new_status VARCHAR(20) NOT NULL COMMENT '变更后状态',
+    change_reason VARCHAR(255) DEFAULT NULL COMMENT '变更原因',
+    changed_by VARCHAR(50) NOT NULL COMMENT '变更人',
+    changed_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变更时间',
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    INDEX idx_project_id (project_id),
+    INDEX idx_changed_time (changed_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='项目状态变更历史表';
+
+
+
 /*Table structure for table `v_user_project_permissions` */
 
 DROP TABLE IF EXISTS `v_user_project_permissions`;

@@ -2,38 +2,6 @@
 
 一个基于Vue3 + Spring Boot的企业级工时管理系统，支持项目管理、任务分配、工时记录、审批流程和统计分析等功能。
 
-## 项目结构
-```
-timetracking-system/
-├── backend/                 # Java后端
-│   ├── src/main/java/
-│   │   ├── controller/      # 控制器层
-│   │   ├── service/         # 业务逻辑层
-│   │   ├── mapper/          # 数据访问层
-│   │   ├── entity/          # 实体类
-│   │   ├── vo/              # 视图对象
-│   │   ├── config/          # 配置类
-│   │   └── util/            # 工具类
-│   ├── src/main/resources/
-│   │   ├── application.yml  # 应用配置
-│   │   └── mapper/          # MyBatis映射文件
-│   └── pom.xml             # Maven依赖配置
-├── frontend/               # Vue3前端
-│   ├── src/
-│   │   ├── api/            # API接口
-│   │   ├── components/     # 公共组件
-│   │   ├── views/          # 页面组件
-│   │   ├── router/         # 路由配置
-│   │   ├── stores/         # 状态管理
-│   │   └── utils/          # 工具函数
-│   ├── public/
-│   └── package.json        # 前端依赖配置
-└── database/              # 数据库脚本
-    ├── init.sql           # 初始化脚本
-    ├── create_tables.sql  # 建表脚本
-    └── init_en.sql        # 英文版初始化
-```
-
 ## 技术栈
 
 ### 后端技术
@@ -65,7 +33,7 @@ timetracking-system/
 ### 推荐IDE
 - **后端**: IntelliJ IDEA / Eclipse
 - **前端**: VS Code / WebStorm
-- **数据库**: MySQL Workbench / Navicat
+- **数据库**: MySQL SQLyog / Navicat
 
 ## 部署方式
 
@@ -180,16 +148,65 @@ npm run dev
 # 预期输出：
 # Local:   http://localhost:5173/
 # Network: http://192.168.x.x:5173/
-```
 
-#### 3.4 生产环境构建
-```bash
+
+
+```
+#### 3.4 生成环境构建项目
+```
+# 后台构建项目
+mvn clean package -DskipTests
+
+# 启动服务（方式一：直接运行）
+java -jar target/timetracking-backend-1.0.0.jar
+
+# 启动服务（方式二：使用 nohup 后台运行）
+nohup java -jar target/timetracking-backend-1.0.0.jar > backend.log 2>&1 &
+
+# 前端
+# 安装依赖
+npm install
+
 # 构建生产版本
 npm run build
-
 # 构建完成后，dist目录包含所有静态文件
 # 可以部署到Nginx、Apache等Web服务器
+
+# 创建 Nginx 配置文件
+sudo vim /usr/local/nginx/conf/nginx.conf
+
+# 配置内容：
+server {
+    listen 80;
+    server_name your_domain.com;  # 替换为你的域名或 IP
+
+    # 前端静态资源配置
+    location / {
+        root /data/timetracking/frontend/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 后端 API 反向代理
+    location /api {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# 启用配置
+sudo ln -s /etc/nginx/sites-available/timetracking /etc/nginx/sites-enabled/
+
+# 测试配置
+sudo nginx -t
+
+# 重新加载 Nginx
+sudo systemctl reload nginx
 ```
+
 
 ## 启动系统
 
@@ -229,60 +246,6 @@ Network: http://192.168.1.100:5173/
 
 #### 4. 访问系统
 打开浏览器访问：`http://localhost:5173`
-
-### 快速启动脚本
-
-#### Windows (start.bat)
-```batch
-@echo off
-echo 启动工时管理系统...
-
-echo 1. 启动MySQL服务...
-net start mysql80
-
-echo 2. 启动后端服务...
-start cmd /k "cd /d backend && mvn spring-boot:run"
-
-echo 3. 等待后端启动...
-timeout /t 30
-
-echo 4. 启动前端服务...
-start cmd /k "cd /d frontend && npm run dev"
-
-echo 5. 打开浏览器...
-timeout /t 10
-start http://localhost:5173
-
-echo 系统启动完成！
-pause
-```
-
-#### Linux/Mac (start.sh)
-```bash
-#!/bin/bash
-echo "启动工时管理系统..."
-
-echo "1. 启动MySQL服务..."
-sudo systemctl start mysql
-
-echo "2. 启动后端服务..."
-cd backend
-mvn spring-boot:run &
-BACKEND_PID=$!
-
-echo "3. 等待后端启动..."
-sleep 30
-
-echo "4. 启动前端服务..."
-cd ../frontend
-npm run dev &
-FRONTEND_PID=$!
-
-echo "5. 系统启动完成！"
-echo "后端PID: $BACKEND_PID"
-echo "前端PID: $FRONTEND_PID"
-echo "访问地址: http://localhost:5173"
-```
 
 ## 默认账号
 系统预置了以下测试账号：

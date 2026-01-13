@@ -180,8 +180,9 @@
           />
         </el-form-item>
         
+        <!-- 项目基本信息一行显示 -->
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="项目类型" prop="projectType">
               <el-select v-model="form.projectType" placeholder="请选择项目类型">
                 <el-option label="开发项目" value="DEVELOPMENT" />
@@ -191,7 +192,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="优先级" prop="priority">
               <el-select v-model="form.priority" placeholder="请选择优先级">
                 <el-option label="高" value="HIGH" />
@@ -200,21 +201,8 @@
               </el-select>
             </el-form-item>
           </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="预估工时" prop="estimatedHours">
-              <el-input-number
-                v-model="form.estimatedHours"
-                :min="0"
-                :precision="1"
-                placeholder="预估工时"
-              />
-            </el-form-item>
-          </el-col>
           
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="项目经理" prop="managerId">
               <el-select v-model="form.managerId" placeholder="请选择项目经理">
                 <el-option
@@ -228,29 +216,53 @@
           </el-col>
         </el-row>
         
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始日期" prop="startDate">
-              <el-date-picker
-                v-model="form.startDate"
-                type="date"
-                placeholder="选择开始日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          
-          <el-col :span="12">
-            <el-form-item label="结束日期" prop="endDate">
-              <el-date-picker
-                v-model="form.endDate"
-                type="date"
-                placeholder="选择结束日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <!-- 时间规划相关字段放在一起 -->
+        <el-card class="time-plan-card" shadow="never">
+          <template #header>
+            <div class="card-header-title">时间规划</div>
+          </template>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="开始日期" prop="startDate">
+                <el-date-picker
+                  v-model="form.startDate"
+                  type="date"
+                  placeholder="选择开始日期"
+                  style="width: 100%"
+                  @change="calculateEstimatedHours"
+                />
+              </el-form-item>
+            </el-col>
+            
+            <el-col :span="8">
+              <el-form-item label="结束日期" prop="endDate">
+                <el-date-picker
+                  v-model="form.endDate"
+                  type="date"
+                  placeholder="选择结束日期"
+                  style="width: 100%"
+                  @change="calculateEstimatedHours"
+                />
+              </el-form-item>
+            </el-col>
+            
+            <el-col :span="8">
+              <el-form-item label="预估工时" prop="estimatedHours">
+                <el-input-number
+                  v-model="form.estimatedHours"
+                  :min="0"
+                  :precision="1"
+                  placeholder="预估工时"
+                  style="width: 100%"
+                  @change="onEstimatedHoursChange"
+                />
+                <div class="field-hint">
+                  <div>对应工作日：{{ calculatedWorkdays }}天 (8小时/天)</div>
+                </div>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-card>
         
         <!-- 财务信息（可选，用于成本分析） -->
         <el-collapse v-model="activeCollapse" class="form-collapse">
@@ -458,6 +470,9 @@ const form = reactive({
   resourceUtilization: 80
 })
 
+// 计算得到的工作日天数
+const calculatedWorkdays = ref(0)
+
 const formRef = ref()
 const formRules = {
   projectName: [
@@ -530,6 +545,11 @@ const loadManagers = async () => {
 // 显示新建对话框
 const showCreateDialog = () => {
   dialogTitle.value = '新建项目'
+  resetForm()
+  // 如果当前用户是项目经理，默认选择当前用户作为项目经理
+  if (userStore.user?.role === 'PROJECT_MANAGER' && userStore.user?.id) {
+    form.managerId = userStore.user.id
+  }
   dialogVisible.value = true
 }
 
@@ -602,6 +622,51 @@ const submitForm = async () => {
   })
 }
 
+// 计算两个日期之间的工作日数量（排除周末）
+const calculateWorkdays = (startDate, endDate) => {
+  if (!startDate || !endDate) return 0
+  
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  // 确保开始日期不大于结束日期
+  if (start > end) return 0
+  
+  let workdays = 0
+  const current = new Date(start)
+  
+  while (current <= end) {
+    const dayOfWeek = current.getDay()
+    // 0 = 周日, 6 = 周六，排除这两天
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      workdays++
+    }
+    // 移动到下一天
+    current.setDate(current.getDate() + 1)
+  }
+  
+  return workdays
+}
+
+// 根据开始日期和结束日期计算预估工时
+const calculateEstimatedHours = () => {
+  if (!form.startDate || !form.endDate) return
+  
+  const workdays = calculateWorkdays(form.startDate, form.endDate)
+  calculatedWorkdays.value = workdays
+  
+  // 一天按8小时计算
+  const estimatedHours = workdays * 8
+  form.estimatedHours = estimatedHours
+}
+
+// 当预估工时手动调整时，动态计算对应的工作日天数
+const onEstimatedHoursChange = () => {
+  // 一天按8小时计算，向上取整
+  const workdays = Math.ceil(form.estimatedHours / 8)
+  calculatedWorkdays.value = workdays
+}
+
 // 重置表单
 const resetForm = () => {
   if (formRef.value) {
@@ -632,6 +697,9 @@ const resetForm = () => {
     clientSatisfaction: 85,
     resourceUtilization: 80
   })
+  
+  // 重置计算的工作日数量
+  calculatedWorkdays.value = 0
 }
 
 // 选择变化
@@ -820,5 +888,22 @@ onMounted(() => {
   color: #909399;
   margin-top: 4px;
   line-height: 1.4;
+}
+
+/* 时间规划卡片样式 */
+.time-plan-card {
+  margin: 20px 0;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+}
+
+.card-header-title {
+  font-weight: 500;
+  color: #303133;
+  font-size: 14px;
+}
+
+.time-plan-card .el-form-item {
+  margin-bottom: 0;
 }
 </style>

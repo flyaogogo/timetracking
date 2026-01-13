@@ -61,16 +61,22 @@ public class PermissionUtil {
     }
     
     /**
-     * 判断当前用户是否为项目经理（严格检查：必须在至少一个项目中担任项目经理）
+     * 判断当前用户是否为项目经理（角色检查 + 项目检查）
      */
     public static boolean isProjectManager() {
+        User.UserRole role = getCurrentUserRole();
+        // 先检查角色，如果是项目经理角色，直接返回true
+        if (role == User.UserRole.PROJECT_MANAGER) {
+            return true;
+        }
+        
+        // 如果不是项目经理角色，再检查是否在任何项目中担任项目经理
         Long currentUserId = getCurrentUserId();
         if (currentUserId == null || projectMemberMapper == null) {
             return false;
         }
         
         try {
-            // 检查用户是否在任何项目中担任项目经理
             return projectMemberMapper.isProjectManagerInAnyProject(currentUserId) > 0;
         } catch (Exception e) {
             // 如果查询失败，返回false
@@ -105,7 +111,7 @@ public class PermissionUtil {
      * 判断当前用户是否可以管理所有项目
      */
     public static boolean canManageAllProjects() {
-        return isAdmin();
+        return isAdmin() || isProjectManager() || isDepartmentManager();
     }
     
     /**

@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.timetracking.entity.Project;
-import com.timetracking.entity.User;
 import com.timetracking.mapper.ProjectMapper;
 import com.timetracking.mapper.ProjectMemberMapper;
 import com.timetracking.util.PermissionUtil;
@@ -15,6 +14,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDate;
+import java.math.BigDecimal;
 
 @Service
 public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
@@ -159,6 +160,19 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
         }
         
         save(project);
+        
+        // 自动将项目经理添加到项目成员表中
+        try {
+            // 检查项目经理是否已在项目成员表中
+            if (!isProjectMember(project.getId(), currentUserId)) {
+                // 使用SQL直接插入，避免循环依赖
+                projectMemberMapper.insertProjectManager(project.getId(), currentUserId);
+            }
+        } catch (Exception e) {
+            // 如果插入失败，记录日志但不影响项目创建
+            System.err.println("Failed to add project manager to project members: " + e.getMessage());
+        }
+        
         return project;
     }
     

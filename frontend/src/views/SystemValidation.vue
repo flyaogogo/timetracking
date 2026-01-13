@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>系统优化功能验证</span>
           <el-button type="primary" @click="runAllTests">
-            <el-icon><PlayArrow /></el-icon>
+            <el-icon><VideoPlay /></el-icon>
             运行所有测试
           </el-button>
         </div>
@@ -173,10 +173,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
-  PlayArrow, 
+  VideoPlay, 
   Refresh, 
-  CheckCircle, 
-  XCircle, 
+  CircleCheck, 
+  CircleClose, 
   Warning, 
   Clock 
 } from '@element-plus/icons-vue'
@@ -565,8 +565,8 @@ const addLog = (level, message) => {
 // 获取状态图标
 const getStatusIcon = (status) => {
   switch (status) {
-    case 'passed': return CheckCircle
-    case 'failed': return XCircle
+    case 'passed': return CircleCheck
+    case 'failed': return CircleClose
     case 'warning': return Warning
     case 'running': return Clock
     default: return Clock

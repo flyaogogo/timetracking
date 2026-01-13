@@ -2,6 +2,7 @@ package com.timetracking.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.timetracking.entity.ProjectMember;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -163,4 +164,12 @@ public interface ProjectMemberMapper extends BaseMapper<ProjectMember> {
             "AND (effective_date IS NULL OR effective_date <= CURDATE()) " +
             "AND (expiry_date IS NULL OR expiry_date >= CURDATE())")
     int isProjectManagerInAnyProject(@Param("userId") Long userId);
+    
+    /**
+     * 插入项目经理到项目成员表
+     */
+    @Insert("INSERT INTO project_members (project_id, user_id, role, join_date, is_project_manager, is_tech_leader, " +
+            "can_approve_timesheet, can_manage_tasks, can_view_reports, create_time, update_time, effective_date) " +
+            "VALUES (#{projectId}, #{userId}, 'MANAGER', CURDATE(), TRUE, FALSE, TRUE, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURDATE())")
+    int insertProjectManager(@Param("projectId") Long projectId, @Param("userId") Long userId);
 }

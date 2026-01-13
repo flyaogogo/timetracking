@@ -440,6 +440,10 @@ const loadProjects = async () => {
       if (urlProjectId) {
         selectedProjectId.value = urlProjectId
         loadProjectData()
+      } else if (projects.value.length > 0) {
+        // 如果没有URL参数，默认选择第一个项目
+        selectedProjectId.value = projects.value[0].id
+        loadProjectData()
       }
     } else {
       throw new Error(response.message || '获取项目列表失败')

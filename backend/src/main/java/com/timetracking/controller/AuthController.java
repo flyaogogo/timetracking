@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -29,9 +31,25 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
     
     @PostMapping("/login")
-    public Result login(@RequestBody LoginRequest loginRequest) {
+    public Result login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         System.out.println("Login request received: " + loginRequest.getUsername());
         try {
+            // 验证验证码
+            HttpSession session = request.getSession();
+            String storedCaptcha = (String) session.getAttribute("captcha");
+            String inputCaptcha = loginRequest.getCaptcha();
+            
+            System.out.println("Validating captcha...");
+            System.out.println("Stored captcha: " + storedCaptcha);
+            System.out.println("Input captcha: " + inputCaptcha);
+            
+            if (storedCaptcha == null || inputCaptcha == null || !storedCaptcha.equalsIgnoreCase(inputCaptcha)) {
+                return Result.error("验证码错误");
+            }
+            
+            // 验证码验证通过后移除，防止重复使用
+            session.removeAttribute("captcha");
+            
             User user = userService.findByUsername(loginRequest.getUsername());
             System.out.println("User found: " + (user != null ? user.getUsername() : "null"));
             

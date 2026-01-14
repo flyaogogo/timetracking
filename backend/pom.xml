@@ -66,6 +66,13 @@
             <version>${jwt.version}</version>
         </dependency>
 
+        <!-- Kaptcha验证码生成库 -->
+        <dependency>
+            <groupId>com.github.penggle</groupId>
+            <artifactId>kaptcha</artifactId>
+            <version>2.3.2</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

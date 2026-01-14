@@ -33,6 +33,26 @@
           />
         </el-form-item>
         
+        <el-form-item prop="captcha">
+          <div class="captcha-row">
+            <el-input
+              v-model="loginForm.captcha"
+              placeholder="请输入验证码"
+              size="large"
+              prefix-icon="View"
+              style="flex: 1;"
+            />
+            <div class="captcha-container">
+              <div class="captcha-image" title="点击刷新验证码">
+                <img :src="captchaImageUrl" alt="验证码" style="width: 100%; height: 100%; cursor: pointer;" @click="refreshCaptcha" />
+              </div>
+              <el-icon class="refresh-icon" @click="refreshCaptcha" title="点击刷新验证码">
+                <Refresh />
+              </el-icon>
+            </div>
+          </div>
+        </el-form-item>
+        
         <el-form-item>
           <el-button
             type="primary"
@@ -46,21 +66,19 @@
         </el-form-item>
       </el-form>
       
-      <div class="demo-accounts">
-        <h4>演示账号：</h4>
-        <p>管理员：admin / admin123</p>
-        <p>项目经理：pm001 / admin123</p>
-        <p>开发人员：dev001 / admin123</p>
+      <div class="system-description">
+        <p>工时管理系统 - 高效管理项目工时，提升团队协作效率</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { Refresh } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -70,7 +88,8 @@ const loading = ref(false)
 
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  captcha: ''
 })
 
 const loginRules = {
@@ -79,8 +98,25 @@ const loginRules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' }
+  ],
+  captcha: [
+    { required: true, message: '请输入验证码', trigger: 'blur' }
   ]
 }
+
+// 验证码图片URL
+const captchaImageUrl = ref('')
+
+// 刷新验证码
+const refreshCaptcha = () => {
+  // 调用后端验证码API
+  captchaImageUrl.value = `/api/captcha/image?timestamp=${Math.random()}`
+}
+
+// 初始化验证码
+onMounted(() => {
+  refreshCaptcha()
+})
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
@@ -149,23 +185,68 @@ const handleLogin = async () => {
   width: 100%;
 }
 
-.demo-accounts {
-  text-align: center;
-  padding: 20px;
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.captcha-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.captcha-image {
+  width: 140px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
   background: #f5f5f5;
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.captcha-image:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.captcha-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.refresh-icon {
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.refresh-icon:hover {
+  color: #667eea;
+  background-color: #f0f0f0;
+}
+
+.system-description {
+  text-align: center;
+  padding: 15px;
+  background: #f0f9ff;
   border-radius: 5px;
   margin-top: 20px;
+  border: 1px solid #e0f2fe;
 }
 
-.demo-accounts h4 {
-  margin-bottom: 10px;
-  color: #333;
-}
-
-.demo-accounts p {
-  margin: 5px 0;
-  color: #666;
-  font-size: 12px;
+.system-description p {
+  margin: 0;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* 响应式设计 */
@@ -182,8 +263,24 @@ const handleLogin = async () => {
     font-size: 20px;
   }
   
-  .demo-accounts {
-    padding: 16px;
+  .system-description {
+    padding: 12px;
+  }
+  
+  .captcha-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .captcha-container {
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .captcha-image {
+    width: 130px;
+    height: 40px;
   }
 }
 
@@ -204,8 +301,28 @@ const handleLogin = async () => {
     font-size: 12px;
   }
   
-  .demo-accounts p {
-    font-size: 11px;
+  .system-description p {
+    font-size: 12px;
+  }
+  
+  .captcha-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .captcha-container {
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .captcha-image {
+    width: 120px;
+    height: 40px;
+  }
+  
+  .refresh-icon {
+    font-size: 16px;
   }
 }
 </style>

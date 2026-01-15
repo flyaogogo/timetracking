@@ -91,4 +91,32 @@ public class AuthController {
     public Result getUserInfo() {
         return Result.success("获取用户信息成功");
     }
+    
+    @PostMapping("/register")
+    public Result register(@RequestBody User user) {
+        try {
+            // 检查用户名是否已存在
+            if (userService.findByUsername(user.getUsername()) != null) {
+                return Result.error("用户名已存在");
+            }
+            
+            // 设置默认角色为DEVELOPER
+            user.setRole(User.UserRole.DEVELOPER);
+            user.setStatus(1);
+            
+            // 加密密码
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            
+            // 保存用户
+            boolean result = userService.save(user);
+            if (result) {
+                return Result.success("注册成功");
+            } else {
+                return Result.error("注册失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("注册失败：" + e.getMessage());
+        }
+    }
 }

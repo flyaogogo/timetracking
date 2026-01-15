@@ -6,7 +6,17 @@
         <p>Time Tracking System</p>
       </div>
       
+      <!-- 表单切换标签 -->
+      <div class="form-tabs">
+        <el-tabs v-model="activeTab" class="login-tabs">
+          <el-tab-pane label="登录" name="login"></el-tab-pane>
+          <el-tab-pane label="注册" name="register"></el-tab-pane>
+        </el-tabs>
+      </div>
+      
+      <!-- 登录表单 -->
       <el-form
+        v-if="activeTab === 'login'"
         ref="loginFormRef"
         :model="loginForm"
         :rules="loginRules"
@@ -67,6 +77,77 @@
         </el-form-item>
       </el-form>
       
+      <!-- 注册表单 -->
+      <el-form
+        v-else
+        ref="registerFormRef"
+        :model="registerForm"
+        :rules="registerRules"
+        class="login-form"
+        @keyup.enter="handleRegister"
+      >
+        <el-form-item prop="username">
+          <el-input
+            v-model="registerForm.username"
+            placeholder="请输入用户名"
+            size="large"
+            prefix-icon="User"
+          />
+        </el-form-item>
+        
+        <el-form-item prop="realName">
+          <el-input
+            v-model="registerForm.realName"
+            placeholder="请输入真实姓名"
+            size="large"
+            prefix-icon="Avatar"
+          />
+        </el-form-item>
+        
+        <el-form-item prop="password">
+          <el-input
+            v-model="registerForm.password"
+            type="password"
+            placeholder="请输入密码"
+            size="large"
+            prefix-icon="Lock"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item prop="confirmPassword">
+          <el-input
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="请确认密码"
+            size="large"
+            prefix-icon="Lock"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item prop="email">
+          <el-input
+            v-model="registerForm.email"
+            placeholder="请输入邮箱"
+            size="large"
+            prefix-icon="Message"
+          />
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="registerLoading"
+            @click="handleRegister"
+            class="login-btn"
+          >
+            注册
+          </el-button>
+        </el-form-item>
+      </el-form>
+      
       <div class="system-description">
         <p>工时管理系统 - 高效管理项目工时，提升团队协作效率</p>
       </div>
@@ -79,19 +160,33 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Avatar, Message } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
 const router = useRouter()
 const userStore = useUserStore()
 
+// 表单切换
+const activeTab = ref('login')
+
 const loginFormRef = ref()
+const registerFormRef = ref()
 const captchaInputRef = ref()
 const loading = ref(false)
+const registerLoading = ref(false)
 
 const loginForm = reactive({
   username: '',
   password: '',
   captcha: ''
+})
+
+const registerForm = reactive({
+  username: '',
+  password: '',
+  confirmPassword: '',
+  realName: '',
+  email: ''
 })
 
 const loginRules = {
@@ -103,6 +198,39 @@ const loginRules = {
   ],
   captcha: [
     { required: true, message: '请输入验证码', trigger: 'blur' }
+  ]
+}
+
+const registerRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
+  ],
+  realName: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value === '') {
+          callback(new Error('请再次输入密码'))
+        } else if (value !== registerForm.password) {
+          callback(new Error('两次输入密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] }
   ]
 }
 
@@ -156,6 +284,42 @@ const handleLogin = async () => {
     }
   })
 }
+
+// 注册处理
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  
+  await registerFormRef.value.validate(async (valid) => {
+    if (valid) {
+      registerLoading.value = true
+      try {
+        const result = await request.post('/auth/register', {
+          username: registerForm.username,
+          password: registerForm.password,
+          realName: registerForm.realName,
+          email: registerForm.email
+        })
+        
+        if (result.code === 200) {
+          ElMessage.success(result.message || '注册成功，请登录')
+          // 切换到登录表单
+          activeTab.value = 'login'
+          // 清空注册表单
+          Object.keys(registerForm).forEach(key => {
+            registerForm[key] = ''
+          })
+        } else {
+          ElMessage.error(result.message || '注册失败')
+        }
+      } catch (error) {
+        console.error('注册失败:', error)
+        ElMessage.error('注册失败，请稍后重试')
+      } finally {
+        registerLoading.value = false
+      }
+    }
+  })
+}
 </script>
 
 <style scoped>
@@ -191,6 +355,14 @@ const handleLogin = async () => {
 .login-header p {
   color: #666;
   font-size: 14px;
+}
+
+.form-tabs {
+  margin-bottom: 20px;
+}
+
+.login-tabs {
+  --el-tabs-header-height: 40px;
 }
 
 .login-form {

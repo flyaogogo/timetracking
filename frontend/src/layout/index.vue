@@ -327,7 +327,8 @@ const handleMenuSelect = (index) => {
 const handleCommand = async (command) => {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人信息功能开发中')
+      // 跳转到个人信息页面
+      router.push('/profile')
       break
     case 'settings':
       ElMessage.info('系统设置功能开发中')

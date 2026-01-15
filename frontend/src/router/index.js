@@ -31,6 +31,15 @@ const routes = [
         }
       },
       {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('@/views/Profile.vue'),
+        meta: { 
+          title: '个人信息',
+          roles: ['ADMIN', 'PROJECT_MANAGER', 'PRODUCT_MANAGER', 'DEPARTMENT_MANAGER', 'DEVELOPER', 'TESTER']
+        }
+      },
+      {
         path: 'project-manager',
         name: 'ProjectManagerDashboard',
         component: () => import('@/views/ProjectManagerDashboard.vue'),

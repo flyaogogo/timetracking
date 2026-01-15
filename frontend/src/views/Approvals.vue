@@ -87,9 +87,11 @@
         <el-table-column prop="startTime" label="开始时间" width="100" />
         <el-table-column prop="endTime" label="结束时间" width="100" />
         
-        <el-table-column prop="duration" label="工时" width="80">
+        <el-table-column prop="duration" label="工时" width="120">
           <template #default="{ row }">
-            <span class="duration">{{ row.duration }}h</span>
+            <span class="duration">
+              {{ row.duration }}h / {{ Math.ceil(row.duration / 8) }}天
+            </span>
           </template>
         </el-table-column>
         
@@ -161,7 +163,7 @@
         <el-descriptions-item label="工作日期">{{ currentDetail.workDate }}</el-descriptions-item>
         <el-descriptions-item label="员工">{{ currentDetail.userName }}</el-descriptions-item>
         <el-descriptions-item label="项目">{{ currentDetail.projectName }}</el-descriptions-item>
-        <el-descriptions-item label="项目经理">{{ currentDetail.managerName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="项目经理">{{ currentDetail.managerName || '无' }}</el-descriptions-item>
         <el-descriptions-item label="任务">{{ currentDetail.taskName || '无' }}</el-descriptions-item>
         <el-descriptions-item label="开始时间">{{ currentDetail.startTime }}</el-descriptions-item>
         <el-descriptions-item label="结束时间">{{ currentDetail.endTime }}</el-descriptions-item>
@@ -321,7 +323,11 @@ const viewDetail = async (row) => {
   try {
     const response = await getTimeEntryById(row.id)
     if (response.code === 200) {
-      currentDetail.value = response.data
+      // 确保详情中包含项目经理名称，优先使用列表中的数据
+      currentDetail.value = {
+        ...response.data,
+        managerName: row.managerName || response.data.managerName
+      }
       detailDialogVisible.value = true
     }
   } catch (error) {
@@ -547,6 +553,12 @@ onMounted(() => {
 .duration {
   font-weight: bold;
   color: #409EFF;
+}
+
+.days-hint {
+  font-size: 12px;
+  color: #67C23A;
+  margin-top: 2px;
 }
 
 .text-muted {

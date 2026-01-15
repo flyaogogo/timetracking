@@ -172,4 +172,13 @@ public interface ProjectMemberMapper extends BaseMapper<ProjectMember> {
             "can_approve_timesheet, can_manage_tasks, can_view_reports, create_time, update_time, effective_date) " +
             "VALUES (#{projectId}, #{userId}, 'MANAGER', CURDATE(), TRUE, FALSE, TRUE, TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURDATE())")
     int insertProjectManager(@Param("projectId") Long projectId, @Param("userId") Long userId);
+    
+    /**
+     * 获取用户作为项目经理管理的所有项目ID列表
+     */
+    @Select("SELECT DISTINCT project_id FROM project_members " +
+            "WHERE user_id = #{userId} AND is_project_manager = TRUE " +
+            "AND (effective_date IS NULL OR effective_date <= CURDATE()) " +
+            "AND (expiry_date IS NULL OR expiry_date >= CURDATE())")
+    List<Long> selectManagedProjectIdsByUser(@Param("userId") Long userId);
 }

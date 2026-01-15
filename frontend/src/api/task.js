@@ -53,3 +53,24 @@ export const getUserTasks = (userId, params) => {
     params
   })
 }
+
+export const importTasks = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/tasks/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+export const downloadTaskImportTemplate = () => {
+  return request({
+    url: '/tasks/import/template',
+    method: 'get',
+    responseType: 'blob'
+  })
+}

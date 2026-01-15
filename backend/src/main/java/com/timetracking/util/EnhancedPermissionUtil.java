@@ -290,6 +290,28 @@ public class EnhancedPermissionUtil {
     }
     
     /**
+     * 获取用户管理的所有项目ID列表
+     */
+    public static List<Long> getManagedProjectIds(Long userId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        
+        // 1. 检查全局管理员权限
+        if (PermissionUtil.isAdmin()) {
+            // 管理员可以管理所有项目，返回空列表表示所有项目
+            return Collections.emptyList();
+        }
+        
+        try {
+            // 2. 获取用户作为项目经理的项目ID列表
+            return projectMemberMapper.selectManagedProjectIdsByUser(userId);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+    
+    /**
      * 检查项目内特定权限
      */
     private static boolean checkProjectSpecificPermission(Long userId, Long projectId, ProjectPermissionType permission) {

@@ -10,6 +10,9 @@ import com.timetracking.util.EnhancedPermissionUtil;
 import com.timetracking.vo.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 import java.util.List;
 
@@ -64,16 +67,19 @@ public class TaskController {
     @GetMapping("/my")
     public Result getMyTasks(@RequestParam(defaultValue = "1") int current,
                             @RequestParam(defaultValue = "10") int size,
-                            @RequestParam Long userId) {
+                            @RequestParam(required = false) Long userId) {
         try {
             Long currentUserId = PermissionUtil.getCurrentUserId();
             
+            // 如果没有提供userId，使用当前登录用户的ID
+            Long targetUserId = userId != null ? userId : currentUserId;
+            
             // 只能查看自己的任务，除非是管理员
-            if (!currentUserId.equals(userId) && !PermissionUtil.isAdmin()) {
+            if (!currentUserId.equals(targetUserId) && !PermissionUtil.isAdmin()) {
                 return Result.error("无权限查看其他用户的任务");
             }
             
-            IPage<Task> page = taskService.getMyTasks(current, size, userId);
+            IPage<Task> page = taskService.getMyTasks(current, size, targetUserId);
             return Result.success("获取我的任务成功", page);
         } catch (Exception e) {
             return Result.error("获取我的任务失败: " + e.getMessage());
@@ -249,5 +255,35 @@ public class TaskController {
         }
         
         return EnhancedPermissionUtil.canManageTasks(userId, projectId);
+    }
+    
+    /**
+     * Excel导入任务
+     */
+    @PostMapping("/import")
+    public Result importTasks(@RequestParam("file") MultipartFile file) {
+        try {
+            Long currentUserId = PermissionUtil.getCurrentUserId();
+            if (currentUserId == null) {
+                return Result.error("用户未登录");
+            }
+            
+            // 调用服务层进行导入
+            return taskService.importTasks(file, currentUserId);
+        } catch (Exception e) {
+            return Result.error("导入任务失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 下载导入模板
+     */
+    @GetMapping("/import/template")
+    public void downloadImportTemplate(HttpServletResponse response) {
+        try {
+            taskService.downloadImportTemplate(response);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

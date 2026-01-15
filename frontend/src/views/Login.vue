@@ -36,6 +36,7 @@
         <el-form-item prop="captcha">
           <div class="captcha-row">
             <el-input
+              ref="captchaInputRef"
               v-model="loginForm.captcha"
               placeholder="请输入验证码"
               size="large"
@@ -84,6 +85,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loginFormRef = ref()
+const captchaInputRef = ref()
 const loading = ref(false)
 
 const loginForm = reactive({
@@ -130,10 +132,24 @@ const handleLogin = async () => {
           ElMessage.success('登录成功')
           router.push('/')
         } else {
+          // 显示错误消息
           ElMessage.error(result.message || '登录失败')
+          
+          // 如果是验证码错误，刷新验证码并选中输入框
+          if (result.message && result.message.includes('验证码')) {
+            refreshCaptcha()
+            // 选中验证码输入框
+            setTimeout(() => {
+              if (captchaInputRef.value) {
+                captchaInputRef.value.select()
+              }
+            }, 100)
+          }
         }
       } catch (error) {
         ElMessage.error('登录失败')
+        // 异常情况下也刷新验证码
+        refreshCaptcha()
       } finally {
         loading.value = false
       }

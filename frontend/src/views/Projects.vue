@@ -71,15 +71,15 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="estimatedHours" label="预估工时" width="100">
+        <el-table-column prop="estimatedHours" label="预估工时" width="120">
           <template #default="{ row }">
-            {{ row.estimatedHours }}h
+            {{ row.estimatedHours }}h / {{ Math.ceil(row.estimatedHours / 8) }}天
           </template>
         </el-table-column>
         
-        <el-table-column prop="actualHours" label="实际工时" width="100">
+        <el-table-column prop="actualHours" label="实际工时" width="120">
           <template #default="{ row }">
-            {{ row.actualHours || 0 }}h
+            {{ row.actualHours || 0 }}h / {{ Math.ceil((row.actualHours || 0) / 8) }}天
           </template>
         </el-table-column>
         
@@ -163,26 +163,39 @@
         :rules="formRules"
         label-width="100px"
       >
-        <el-form-item label="项目名称" prop="projectName">
-          <el-input v-model="form.projectName" placeholder="请输入项目名称" />
-        </el-form-item>
-        
-        <el-form-item label="项目编号" prop="projectCode">
-          <el-input v-model="form.projectCode" placeholder="请输入项目编号" />
-        </el-form-item>
-        
-        <el-form-item label="项目描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入项目描述"
-          />
-        </el-form-item>
-        
-        <!-- 项目基本信息一行显示 -->
+        <!-- 项目名称、编号、描述各占一行 -->
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="24">
+            <el-form-item label="项目名称" prop="projectName">
+              <el-input v-model="form.projectName" placeholder="请输入项目名称" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="项目编号" prop="projectCode">
+              <el-input v-model="form.projectCode" placeholder="请输入项目编号" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="项目描述" prop="description">
+              <el-input
+                v-model="form.description"
+                type="textarea"
+                :rows="3"
+                placeholder="请输入项目描述"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- 项目基本信息两行两列显示 -->
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="项目类型" prop="projectType">
               <el-select v-model="form.projectType" placeholder="请选择项目类型">
                 <el-option label="开发项目" value="DEVELOPMENT" />
@@ -192,7 +205,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="优先级" prop="priority">
               <el-select v-model="form.priority" placeholder="请选择优先级">
                 <el-option label="高" value="HIGH" />
@@ -201,8 +214,25 @@
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+        
+        <!-- 时间范围和项目经理 -->
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="时间范围" prop="timeRange">
+              <el-date-picker
+                v-model="timeRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                style="width: 100%"
+                @change="handleDateRangeChange"
+              />
+            </el-form-item>
+          </el-col>
           
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="项目经理" prop="managerId">
               <el-select v-model="form.managerId" placeholder="请选择项目经理">
                 <el-option
@@ -216,53 +246,27 @@
           </el-col>
         </el-row>
         
-        <!-- 时间规划相关字段放在一起 -->
-        <el-card class="time-plan-card" shadow="never">
-          <template #header>
-            <div class="card-header-title">时间规划</div>
-          </template>
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="开始日期" prop="startDate">
-                <el-date-picker
-                  v-model="form.startDate"
-                  type="date"
-                  placeholder="选择开始日期"
-                  style="width: 100%"
-                  @change="calculateEstimatedHours"
-                />
-              </el-form-item>
-            </el-col>
-            
-            <el-col :span="8">
-              <el-form-item label="结束日期" prop="endDate">
-                <el-date-picker
-                  v-model="form.endDate"
-                  type="date"
-                  placeholder="选择结束日期"
-                  style="width: 100%"
-                  @change="calculateEstimatedHours"
-                />
-              </el-form-item>
-            </el-col>
-            
-            <el-col :span="8">
-              <el-form-item label="预估工时" prop="estimatedHours">
-                <el-input-number
-                  v-model="form.estimatedHours"
-                  :min="0"
-                  :precision="1"
-                  placeholder="预估工时"
-                  style="width: 100%"
-                  @change="onEstimatedHoursChange"
-                />
-                <div class="field-hint">
-                  <div>对应工作日：{{ calculatedWorkdays }}天 (8小时/天)</div>
-                </div>
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-card>
+        <!-- 预估工时和工时提示 -->
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="预估工时" prop="estimatedHours">
+              <el-input-number
+                v-model="form.estimatedHours"
+                :min="0"
+                :precision="0"
+                placeholder="请输入预估工时"
+                style="width: 100%"
+                @change="handleEstimatedHoursChange"
+              />
+            </el-form-item>
+          </el-col>
+          
+          <el-col :span="12">
+            <el-form-item label="工时提示">
+              <div class="estimate-hint">{{ estimatedDays }} 天（按每天8小时计算）</div>
+            </el-form-item>
+          </el-col>
+        </el-row>
         
         <!-- 财务信息（可选，用于成本分析） -->
         <el-collapse v-model="activeCollapse" class="form-collapse">
@@ -402,7 +406,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -441,6 +445,14 @@ const pagination = reactive({
   total: 0
 })
 
+// 时间范围变量
+const timeRange = ref([])
+
+// 计算属性：估算天数
+const estimatedDays = computed(() => {
+  return form.estimatedHours > 0 ? Math.ceil(form.estimatedHours / 8) : 0
+})
+
 const form = reactive({
   id: null,
   projectName: '',
@@ -469,9 +481,6 @@ const form = reactive({
   clientSatisfaction: 85,
   resourceUtilization: 80
 })
-
-// 计算得到的工作日天数
-const calculatedWorkdays = ref(0)
 
 const formRef = ref()
 const formRules = {
@@ -562,8 +571,8 @@ const editProject = (row) => {
 
 // 查看项目详情
 const viewProject = (row) => {
-  // 可以跳转到项目详情页面
-  console.log('查看项目:', row)
+  // 跳转到项目统计分析页面，作为项目详情的入口
+  router.push(`/project-statistics?projectId=${row.id}`)
 }
 
 // 查看项目任务
@@ -622,49 +631,47 @@ const submitForm = async () => {
   })
 }
 
-// 计算两个日期之间的工作日数量（排除周末）
-const calculateWorkdays = (startDate, endDate) => {
-  if (!startDate || !endDate) return 0
-  
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  
-  // 确保开始日期不大于结束日期
-  if (start > end) return 0
-  
-  let workdays = 0
-  const current = new Date(start)
-  
-  while (current <= end) {
-    const dayOfWeek = current.getDay()
-    // 0 = 周日, 6 = 周六，排除这两天
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      workdays++
+// 处理时间范围变化
+const handleDateRangeChange = (value) => {
+  if (value && value.length === 2) {
+    // 设置开始日期和结束日期
+    form.startDate = value[0] ? value[0].toISOString().split('T')[0] : ''
+    form.endDate = value[1] ? value[1].toISOString().split('T')[0] : ''
+    
+    // 计算天数差（不包含周末）
+    const start = new Date(value[0])
+    const end = new Date(value[1])
+    let days = 0
+    
+    // 确保开始日期不大于结束日期
+    if (start <= end) {
+      // 计算总天数（包含周末）
+      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1
+      
+      // 计算工作日天数（周一到周五）
+      let workDays = 0
+      for (let i = 0; i < totalDays; i++) {
+        const current = new Date(start)
+        current.setDate(start.getDate() + i)
+        const dayOfWeek = current.getDay()
+        // 0是周日，6是周六，排除这两天
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          workDays++
+        }
+      }
+      
+      days = workDays
     }
-    // 移动到下一天
-    current.setDate(current.getDate() + 1)
+    
+    // 计算预估工时（每天8小时）
+    form.estimatedHours = days * 8
   }
-  
-  return workdays
 }
 
-// 根据开始日期和结束日期计算预估工时
-const calculateEstimatedHours = () => {
-  if (!form.startDate || !form.endDate) return
-  
-  const workdays = calculateWorkdays(form.startDate, form.endDate)
-  calculatedWorkdays.value = workdays
-  
-  // 一天按8小时计算
-  const estimatedHours = workdays * 8
-  form.estimatedHours = estimatedHours
-}
-
-// 当预估工时手动调整时，动态计算对应的工作日天数
-const onEstimatedHoursChange = () => {
-  // 一天按8小时计算，向上取整
-  const workdays = Math.ceil(form.estimatedHours / 8)
-  calculatedWorkdays.value = workdays
+// 处理预估工时变化
+const handleEstimatedHoursChange = () => {
+  // 当手动修改预估工时后，不需要自动更新时间范围
+  // 天数会通过计算属性自动更新
 }
 
 // 重置表单
@@ -672,6 +679,10 @@ const resetForm = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+  
+  // 重置时间范围
+  timeRange.value = []
+  
   Object.assign(form, {
     id: null,
     projectName: '',
@@ -697,9 +708,6 @@ const resetForm = () => {
     clientSatisfaction: 85,
     resourceUtilization: 80
   })
-  
-  // 重置计算的工作日数量
-  calculatedWorkdays.value = 0
 }
 
 // 选择变化
@@ -872,6 +880,26 @@ onMounted(() => {
   margin: 20px 0;
 }
 
+/* 字段提示文本样式 */
+.field-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+/* 预估工时提示样式 */
+.estimate-container {
+  width: 100%;
+}
+
+.estimate-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #67C23A;
+  line-height: 1.4;
+}
+
 .form-collapse .el-collapse-item__header {
   font-weight: 500;
   color: #606266;
@@ -881,29 +909,5 @@ onMounted(() => {
   margin-left: 8px;
   color: #909399;
   cursor: help;
-}
-
-.field-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 4px;
-  line-height: 1.4;
-}
-
-/* 时间规划卡片样式 */
-.time-plan-card {
-  margin: 20px 0;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-}
-
-.card-header-title {
-  font-weight: 500;
-  color: #303133;
-  font-size: 14px;
-}
-
-.time-plan-card .el-form-item {
-  margin-bottom: 0;
 }
 </style>

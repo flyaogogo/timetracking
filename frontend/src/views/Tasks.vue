@@ -42,6 +42,14 @@
             <el-icon><Plus /></el-icon>
             新建任务
           </el-button>
+          <el-button 
+            type="success" 
+            @click="showImportDialog"
+            :disabled="!canManageCurrentProjectTasks"
+          >
+            <el-icon><Download /></el-icon>
+            Excel导入
+          </el-button>
         </div>
       </div>
       
@@ -101,15 +109,15 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="estimatedHours" label="预估工时" width="100">
+        <el-table-column prop="estimatedHours" label="预估工时" width="120">
           <template #default="{ row }">
-            {{ row.estimatedHours }}h
+            {{ row.estimatedHours }}h / {{ Math.ceil(row.estimatedHours / 8) }}天
           </template>
         </el-table-column>
         
-        <el-table-column prop="actualHours" label="实际工时" width="100">
+        <el-table-column prop="actualHours" label="实际工时" width="120">
           <template #default="{ row }">
-            {{ row.actualHours || 0 }}h
+            {{ row.actualHours || 0 }}h / {{ Math.ceil((row.actualHours || 0) / 8) }}天
           </template>
         </el-table-column>
         
@@ -146,7 +154,8 @@
                     <el-icon><Timer /></el-icon>
                     工时
                   </el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>
+                  <!-- 只有管理员和项目经理可以删除任务 -->
+                  <el-dropdown-item command="delete" divided v-if="canDeleteTask(row)">
                     <el-icon><Delete /></el-icon>
                     删除
                   </el-dropdown-item>
@@ -242,12 +251,15 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="预估工时" prop="estimatedHours">
-              <el-input-number
-                v-model="form.estimatedHours"
-                :min="0"
-                :precision="1"
-                placeholder="预估工时"
+            <el-form-item label="时间范围" prop="dateRange">
+              <el-date-picker
+                v-model="dateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="选择开始日期"
+                end-placeholder="选择结束日期"
+                style="width: 100%"
+                @change="handleDateRangeChange"
               />
             </el-form-item>
           </el-col>
@@ -268,24 +280,25 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="开始日期" prop="startDate">
-              <el-date-picker
-                v-model="form.startDate"
-                type="date"
-                placeholder="选择开始日期"
-                style="width: 100%"
+            <el-form-item label="预估工时" prop="estimatedHours">
+              <el-input-number
+                v-model="form.estimatedHours"
+                :min="0"
+                :precision="1"
+                placeholder="预估工时"
+                @change="handleEstimatedHoursChange"
               />
             </el-form-item>
           </el-col>
           
           <el-col :span="12">
-            <el-form-item label="结束日期" prop="endDate">
-              <el-date-picker
-                v-model="form.endDate"
-                type="date"
-                placeholder="选择结束日期"
-                style="width: 100%"
-              />
+            <el-form-item label="工时提示">
+              <div class="estimate-hint" v-if="form.estimatedHours > 0">
+                约{{ calculatedDays }}天（按每天8小时计算）
+              </div>
+              <div class="field-hint" v-else>
+                请输入预估工时
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -428,6 +441,52 @@
         <el-button type="primary" @click="submitProgress">确定</el-button>
       </template>
     </el-dialog>
+    
+    <!-- Excel导入对话框 -->
+    <el-dialog
+      v-model="importDialogVisible"
+      title="Excel导入任务"
+      width="500px"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="选择文件">
+          <el-upload
+            ref="uploadRef"
+            action=""
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :file-list="fileList"
+            accept=".xlsx, .xls"
+            drag
+            style="margin-bottom: 20px"
+          >
+            <el-icon class="el-icon--upload"><Upload /></el-icon>
+            <div class="el-upload__text">
+              拖拽文件到此处或<em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                仅支持.xlsx、.xls格式文件，建议先下载模板再填写数据
+              </div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button type="info" @click="downloadTemplate">
+            <el-icon><Document /></el-icon>
+            下载导入模板
+          </el-button>
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="closeImportDialog">取消</el-button>
+        <el-button type="success" @click="importTasks" :loading="importLoading">
+          开始导入
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -436,7 +495,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUserTasks } from '@/api/task'
+import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUserTasks, importTasks as importTasksApi, downloadTaskImportTemplate } from '@/api/task'
 import { getProjectList } from '@/api/project'
 import { getUserList } from '@/api/user'
 import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
@@ -461,28 +520,39 @@ const currentProgress = ref(0)
 const currentStatus = ref('')
 const activeTaskCollapse = ref([]) // 任务表单折叠面板控制
 
+// Excel导入相关变量
+const importDialogVisible = ref(false)
+const uploadRef = ref(null)
+const fileList = ref([]) // 用于组件显示
+const selectedFile = ref(null) // 用于保存实际选择的文件
+const importLoading = ref(false)
+
 // 权限相关
 const canManageCurrentProjectTasks = computed(() => {
   if (!searchProjectId.value) return false
-  if (userStore.user?.role === 'ADMIN') return true
+  if (userStore.user?.role === 'ADMIN' || userStore.user?.role === 'PROJECT_MANAGER') return true
   // 这里可以添加更复杂的项目级权限检查
   return true // 临时允许所有用户，实际应该检查项目权限
 })
 
-// 检查是否可以管理特定任务
+// 检查是否可以管理特定任务（编辑、更新进度等）
 const canManageTask = (task) => {
   // 管理员可以管理所有任务
   if (userStore.user?.role === 'ADMIN') return true
   
-  // 任务创建者可以管理自己的任务
-  if (task.createdBy === userStore.user?.id) return true
+  // 项目经理可以管理项目内的所有任务
+  if (userStore.user?.role === 'PROJECT_MANAGER') return true
   
   // 任务执行人可以更新进度
   if (task.assigneeId === userStore.user?.id) return true
   
-  // 项目经理可以管理项目内的所有任务
-  // 这里应该调用项目权限检查API，暂时简化处理
   return false
+}
+
+// 检查是否可以删除任务
+const canDeleteTask = (task) => {
+  // 只有管理员和项目经理可以删除任务
+  return userStore.user?.role === 'ADMIN' || userStore.user?.role === 'PROJECT_MANAGER'
 }
 
 const pagination = reactive({
@@ -490,6 +560,12 @@ const pagination = reactive({
   size: 10,
   total: 0
 })
+
+// 日期范围和计算相关
+const dateRange = ref([])
+const daysBetween = ref(0)
+const estimatedHours = ref(0)
+const calculatedDays = ref(0)
 
 const form = reactive({
   id: null,
@@ -532,19 +608,22 @@ const formRules = {
 const loadTasks = async () => {
   loading.value = true
   try {
-    // 检查是否需要只显示用户相关的任务
-    const userOnly = route.query.userOnly === 'true'
+    // 所有用户都能看到自己参与项目中的所有任务
+    // 1. 检查URL参数
+    const userOnlyFromUrl = route.query.userOnly === 'true'
     
     let response
-    if (userOnly && userStore.user?.id) {
-      // 调用用户相关任务的API
+    if (userOnlyFromUrl && userStore.user?.id) {
+      // 仅在URL参数指定时，才只看自己的任务
       response = await getUserTasks(userStore.user.id, {
         current: pagination.current,
         size: pagination.size,
+        projectId: searchProjectId.value,
         keyword: searchKeyword.value
       })
     } else {
-      // 调用普通任务列表API
+      // 调用普通任务列表API，显示自己参与项目中的所有任务
+      // 由于getProjectList已经只返回当前用户参与的项目，所以这里不需要额外的权限检查
       response = await getTaskList({
         current: pagination.current,
         size: pagination.size,
@@ -567,9 +646,10 @@ const loadTasks = async () => {
   }
 }
 
-// 加载项目列表
+// 加载项目列表 - 只加载当前用户参与的项目
 const loadProjects = async () => {
   try {
+    // 使用getProjectList API，它会根据用户权限返回用户参与的项目
     const response = await getProjectList({
       current: 1,
       size: 100
@@ -599,6 +679,60 @@ const loadUsers = async () => {
   }
 }
 
+// 计算两个日期之间的天数差
+const calculateDaysBetween = (start, end) => {
+  if (!start || !end) return 0
+  
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  
+  // 计算毫秒差
+  const timeDiff = endDate.getTime() - startDate.getTime()
+  
+  // 转换为天数（1天 = 86400000毫秒）
+  const days = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1 // +1 包含开始和结束日期
+  
+  return Math.max(0, days)
+}
+
+// 处理日期范围变化
+const handleDateRangeChange = (value) => {
+  if (value && value.length === 2) {
+    const [start, end] = value
+    form.startDate = start
+    form.endDate = end
+    
+    // 计算天数差
+    daysBetween.value = calculateDaysBetween(start, end)
+    
+    // 计算预估工时（每天8小时）
+    estimatedHours.value = daysBetween.value * 8
+    
+    // 自动填充到表单的预估工时字段
+    form.estimatedHours = estimatedHours.value
+    
+    // 同步更新计算天数
+    calculatedDays.value = daysBetween.value
+  } else {
+    // 重置计算结果
+    daysBetween.value = 0
+    estimatedHours.value = 0
+    calculatedDays.value = 0
+    form.startDate = ''
+    form.endDate = ''
+  }
+}
+
+// 处理预估工时变化
+const handleEstimatedHoursChange = (value) => {
+  if (value > 0) {
+    // 计算对应的天数（按每天8小时计算，向上取整）
+    calculatedDays.value = Math.ceil(value / 8)
+  } else {
+    calculatedDays.value = 0
+  }
+}
+
 // 显示新建对话框
 const showCreateDialog = () => {
   dialogTitle.value = '新建任务'
@@ -606,6 +740,12 @@ const showCreateDialog = () => {
   if (searchProjectId.value) {
     form.projectId = searchProjectId.value
   }
+  
+  // 设置执行人为当前登录用户
+  if (userStore.user?.id) {
+    form.assigneeId = userStore.user.id
+  }
+  
   dialogVisible.value = true
 }
 
@@ -613,6 +753,26 @@ const showCreateDialog = () => {
 const editTask = (row) => {
   dialogTitle.value = '编辑任务'
   Object.assign(form, row)
+  
+  // 设置日期范围
+  if (row.startDate && row.endDate) {
+    dateRange.value = [new Date(row.startDate), new Date(row.endDate)]
+    // 重新计算天数差和预估工时
+    daysBetween.value = calculateDaysBetween(row.startDate, row.endDate)
+    estimatedHours.value = daysBetween.value * 8
+  } else {
+    dateRange.value = []
+    daysBetween.value = 0
+    estimatedHours.value = 0
+  }
+  
+  // 计算天数
+  if (row.estimatedHours > 0) {
+    calculatedDays.value = Math.ceil(row.estimatedHours / 8)
+  } else {
+    calculatedDays.value = 0
+  }
+  
   dialogVisible.value = true
 }
 
@@ -710,6 +870,13 @@ const resetForm = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+  
+  // 重置日期范围相关变量
+  dateRange.value = []
+  daysBetween.value = 0
+  estimatedHours.value = 0
+  calculatedDays.value = 0
+  
   Object.assign(form, {
     id: null,
     taskName: '',
@@ -724,7 +891,7 @@ const resetForm = () => {
     endDate: '',
     // 业务价值与复杂度
     businessValue: 3,
-    complexity: 'MEDIUM',
+    taskComplexity: 'MEDIUM',
     storyPoints: 0,
     technicalRisk: 'MEDIUM',
     // 工时规划
@@ -805,6 +972,81 @@ const getStatusText = (status) => {
   return textMap[status] || status
 }
 
+// Excel导入相关方法
+const showImportDialog = () => {
+  importDialogVisible.value = true
+}
+
+const closeImportDialog = () => {
+  importDialogVisible.value = false
+  fileList.value = [] // 清空文件列表
+  selectedFile.value = null // 清空选中的文件
+}
+
+const handleFileChange = (file, fileList) => {
+  console.log('File change event:', file, fileList)
+  // 保存当前选择的文件
+  selectedFile.value = file.raw
+  // 更新fileList用于组件显示
+  fileList.value = fileList
+  console.log('Selected file:', selectedFile.value)
+  console.log('Updated fileList:', fileList.value)
+}
+
+const importTasks = async () => {
+  console.log('Import tasks called, selectedFile:', selectedFile.value)
+  
+  // 确保selectedFile不为空
+  if (!selectedFile.value) {
+    ElMessage.warning('请选择要导入的Excel文件')
+    return
+  }
+  
+  importLoading.value = true
+  try {
+    const file = selectedFile.value
+    console.log('Uploading file:', file.name, file.size)
+    const response = await importTasksApi(file)
+    
+    if (response.code === 200) {
+      ElMessage.success(`导入成功，共导入${response.data.successCount || 0}条任务，失败${response.data.failureCount || 0}条`)
+      closeImportDialog()
+      loadTasks() // 重新加载任务列表
+    } else {
+      ElMessage.error(response.message || '导入失败')
+    }
+  } catch (error) {
+    console.error('导入任务失败:', error)
+    ElMessage.error('导入失败，请检查文件格式是否正确')
+  } finally {
+    importLoading.value = false
+  }
+}
+
+const downloadTemplate = async () => {
+  try {
+    const response = await downloadTaskImportTemplate()
+    
+    // 创建下载链接并触发下载
+    const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = '任务导入模板.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('模板下载成功')
+  } catch (error) {
+    console.error('下载模板失败:', error)
+    ElMessage.error('模板下载失败')
+  }
+}
+
 onMounted(() => {
   // 如果URL中有projectId参数，设置默认项目
   if (route.query.projectId) {
@@ -867,5 +1109,21 @@ onMounted(() => {
 
 .normal-text {
   color: #67C23A;
+}
+
+/* 字段提示文本样式 */
+.field-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+}
+
+/* 预估工时提示样式 */
+.estimate-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #67C23A;
+  line-height: 1.4;
 }
 </style>

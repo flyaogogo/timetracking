@@ -96,7 +96,7 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "  WHERE te.status = 'APPROVED' " +
             "  GROUP BY te.project_id" +
             ") te_stats ON p.id = te_stats.project_id " +
-            "WHERE (pm.user_id = #{userId} OR p.manager_id = #{userId}) " +
+            "WHERE (pm.user_id IS NOT NULL OR p.manager_id = #{userId}) " +
             "<if test='keyword != null and keyword != \"\"'>" +
             "AND (p.project_name LIKE CONCAT('%', #{keyword}, '%') " +
             "OR p.project_code LIKE CONCAT('%', #{keyword}, '%') " +
@@ -152,7 +152,7 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "  WHERE te.status = 'APPROVED' " +
             "  GROUP BY te.project_id" +
             ") te_stats ON p.id = te_stats.project_id " +
-            "WHERE (pm.user_id = #{userId} OR p.manager_id = #{userId}) " +
+            "WHERE (pm.user_id IS NOT NULL OR p.manager_id = #{userId}) " +
             "<if test='keyword != null and keyword != \"\"'>" +
             "AND (p.project_name LIKE CONCAT('%', #{keyword}, '%') " +
             "OR p.project_code LIKE CONCAT('%', #{keyword}, '%') " +

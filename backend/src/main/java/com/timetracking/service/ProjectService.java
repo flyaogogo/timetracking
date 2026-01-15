@@ -59,8 +59,13 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
     public IPage<Project> getProjectListByPermission(int current, int size, String keyword, Long userId) {
         Page<Project> page = new Page<>(current, size);
         
+        // 如果没有指定userId，使用当前登录用户的ID
         if (userId == null) {
-            return page; // 返回空页面
+            userId = PermissionUtil.getCurrentUserId();
+            // 如果当前用户也没有登录，返回空页面
+            if (userId == null) {
+                return page;
+            }
         }
         
         // 只有管理员可以查看所有项目

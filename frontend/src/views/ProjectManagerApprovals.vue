@@ -64,9 +64,11 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="duration" label="工时" width="80">
+        <el-table-column prop="duration" label="工时" width="120">
           <template #default="{ row }">
-            {{ row.duration }}h
+            <span>
+              {{ row.duration }}h / {{ Math.ceil(row.duration / 8) }}天
+            </span>
           </template>
         </el-table-column>
         
@@ -373,6 +375,12 @@ onMounted(() => {
 .user-role {
   font-size: 12px;
   color: #909399;
+  margin-top: 2px;
+}
+
+.days-hint {
+  font-size: 12px;
+  color: #67C23A;
   margin-top: 2px;
 }
 

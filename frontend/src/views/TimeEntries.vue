@@ -222,9 +222,10 @@
         <el-form-item label="关联任务" prop="taskId">
           <el-select 
             v-model="form.taskId" 
-            :placeholder="form.projectId ? '请选择任务（必填）' : '请先选择项目'" 
+            :placeholder="form.projectId ? '请选择或搜索任务（必填）' : '请先选择项目'" 
             :disabled="!form.projectId"
             clearable
+            filterable
             style="width: 100%"
           >
             <el-option
@@ -459,9 +460,13 @@ const formRules = {
   ]
 }
 
-// 过滤后的任务列表
+// 过滤后的任务列表 - 只显示自己执行的任务
 const filteredTasks = computed(() => {
-  return tasks.value.filter(task => task.projectId === form.projectId)
+  return tasks.value.filter(task => {
+    // 确保类型匹配，将两者都转换为字符串进行比较
+    // 只显示当前用户执行的任务
+    return String(task.projectId) === String(form.projectId) && task.assigneeId === userStore.user?.id
+  })
 })
 
 // 加载工时记录列表
@@ -523,9 +528,10 @@ const loadProjects = async () => {
   }
 }
 
-// 加载任务列表
+// 加载任务列表（只加载当前用户的任务）
 const loadTasks = async () => {
   try {
+    // 使用getTaskList API获取所有任务，然后在前端过滤
     const response = await getTaskList({
       current: 1,
       size: 1000
@@ -533,6 +539,7 @@ const loadTasks = async () => {
     
     if (response.code === 200) {
       tasks.value = response.data.records || []
+      console.log('Loaded tasks:', tasks.value)
     }
   } catch (error) {
     console.error('加载任务列表失败:', error)
@@ -546,6 +553,15 @@ const onProjectChange = () => {
   if (formRef.value) {
     formRef.value.validateField('taskId')
   }
+}
+
+// 远程搜索任务
+const remoteSearchTasks = (query) => {
+  // 这里可以添加远程搜索逻辑
+  // 目前我们已经加载了所有任务，所以直接在本地过滤
+  console.log('Searching tasks with query:', query)
+  // 搜索逻辑已经在filteredTasks中实现，query会自动传递给el-select组件
+  // el-select组件会根据filterable属性自动过滤options
 }
 
 // 计算工时时长
@@ -564,6 +580,12 @@ const calculateDuration = () => {
 const showCreateDialog = () => {
   dialogTitle.value = '记录工时'
   form.workDate = dayjs().format('YYYY-MM-DD')
+  // 默认开始时间为早上9点
+  form.startTime = dayjs().hour(9).minute(0).second(0).toDate()
+  // 默认结束时间为下午5点
+  form.endTime = dayjs().hour(17).minute(0).second(0).toDate()
+  // 计算默认工时时长
+  calculateDuration()
   dialogVisible.value = true
 }
 

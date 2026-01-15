@@ -40,8 +40,11 @@
           WHERE te.status = 'APPROVED'
           GROUP BY te.task_id
         ) te_stats ON t.id = te_stats.task_id
-        INNER JOIN project_members pm ON t.project_id = pm.project_id
-        WHERE pm.user_id = #{userId} AND t.assignee_id = #{userId}
+        WHERE t.project_id IN (
+            SELECT DISTINCT pm.project_id FROM project_members pm WHERE pm.user_id = #{userId}
+            UNION
+            SELECT DISTINCT p.id FROM projects p WHERE p.manager_id = #{userId}
+        )
         <if test='keyword != null and keyword != ""'>
             AND (t.task_name LIKE CONCAT('%', #{keyword}, '%')
             OR t.description LIKE CONCAT('%', #{keyword}, '%'))
@@ -66,8 +69,11 @@
           WHERE te.status = 'APPROVED'
           GROUP BY te.task_id
         ) te_stats ON t.id = te_stats.task_id
-        INNER JOIN project_members pm ON t.project_id = pm.project_id
-        WHERE pm.user_id = #{userId} AND t.assignee_id = #{userId} AND t.project_id = #{projectId}
+        WHERE t.project_id = #{projectId} AND t.project_id IN (
+            SELECT DISTINCT pm.project_id FROM project_members pm WHERE pm.user_id = #{userId}
+            UNION
+            SELECT DISTINCT p.id FROM projects p WHERE p.manager_id = #{userId}
+        )
         <if test='keyword != null and keyword != ""'>
             AND (t.task_name LIKE CONCAT('%', #{keyword}, '%')
             OR t.description LIKE CONCAT('%', #{keyword}, '%'))

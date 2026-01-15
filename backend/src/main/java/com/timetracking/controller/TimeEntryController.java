@@ -304,17 +304,12 @@ public class TimeEntryController {
             return false;
         }
         
-        // 不能审批自己的工时记录
-        if (timeEntry.getUserId().equals(userId)) {
-            return false;
-        }
-        
         // 管理员可以审批所有工时记录
         if (PermissionUtil.isAdmin()) {
             return true;
         }
         
-        // 项目经理可以审批项目内的工时记录
+        // 项目经理可以审批项目内的所有工时记录，包括自己的
         if (timeEntry.getProjectId() != null && 
             EnhancedPermissionUtil.canApproveTimesheet(userId, timeEntry.getProjectId())) {
             return true;

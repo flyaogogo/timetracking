@@ -1,10 +1,82 @@
 <template>
-  <div id="app">
+  <div id="app" ref="appRef">
     <router-view />
   </div>
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { ElMessage } from 'element-plus'
+
+const appRef = ref(null)
+const router = useRouter()
+const userStore = useUserStore()
+
+// 会话超时配置
+const SESSION_TIMEOUT = 3600000 // 1小时，与后端JWT过期时间一致
+let timeoutTimer = null
+
+// 重置超时计时器
+const resetTimeoutTimer = () => {
+  if (timeoutTimer) {
+    clearTimeout(timeoutTimer)
+  }
+  
+  timeoutTimer = setTimeout(() => {
+    // 会话超时，执行退出登录
+    handleSessionTimeout()
+  }, SESSION_TIMEOUT)
+}
+
+// 处理会话超时
+const handleSessionTimeout = () => {
+  if (userStore.token) {
+    ElMessage.warning('登录已过期，请重新登录')
+    userStore.logout()
+    router.push('/login')
+  }
+}
+
+// 监听用户活动
+const handleUserActivity = () => {
+  // 只有在用户已登录的情况下才重置计时器
+  if (userStore.token) {
+    resetTimeoutTimer()
+  }
+}
+
+// 注册事件监听器
+const registerActivityListeners = () => {
+  const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+  const appElement = appRef.value || document
+  
+  events.forEach(event => {
+    appElement.addEventListener(event, handleUserActivity)
+  })
+  
+  return () => {
+    events.forEach(event => {
+      appElement.removeEventListener(event, handleUserActivity)
+    })
+  }
+}
+
+onMounted(() => {
+  // 初始化超时计时器
+  resetTimeoutTimer()
+  
+  // 注册用户活动监听器
+  registerActivityListeners()
+})
+
+onUnmounted(() => {
+  // 清除超时计时器
+  if (timeoutTimer) {
+    clearTimeout(timeoutTimer)
+  }
+})
 </script>
 
 <style>

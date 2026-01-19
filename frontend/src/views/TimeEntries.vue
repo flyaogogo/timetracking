@@ -236,7 +236,7 @@
             />
           </el-select>
           <div v-if="form.projectId && filteredTasks.length === 0" class="field-hint" style="color: #f56c6c;">
-            该项目暂无可用任务，请先在任务管理中创建任务
+            当前用户在该项目中暂无可执行任务，请先在任务管理中创建任务
           </div>
         </el-form-item>
         
@@ -460,12 +460,16 @@ const formRules = {
   ]
 }
 
-// 过滤后的任务列表 - 只显示自己执行的任务
+// 过滤后的任务列表 - 显示当前项目的所有任务
 const filteredTasks = computed(() => {
   return tasks.value.filter(task => {
     // 确保类型匹配，将两者都转换为字符串进行比较
-    // 只显示当前用户执行的任务
+
+    // 只显示当前用户执行的任务 暂时注释
     return String(task.projectId) === String(form.projectId) && task.assigneeId === userStore.user?.id
+    
+    // 显示当前项目的所有任务，而不仅仅是分配给自己的
+    //return String(task.projectId) === String(form.projectId)
   })
 })
 

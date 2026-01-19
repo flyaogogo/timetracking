@@ -8,11 +8,21 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/timetracking?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: hx1356
+    password: ENC(XBUi7upjdHPu37ZbeEascw==)
   
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
+
+# Jasypt加密配置
+jasypt:
+  encryptor:
+    password: timetracking-secret
+    algorithm: PBEWithMD5AndDES
+    iv-generator-classname: org.jasypt.iv.NoIvGenerator
+    string-output-type: base64
+
+
 
 mybatis-plus:
   configuration:

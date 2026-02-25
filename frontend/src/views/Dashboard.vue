@@ -259,6 +259,19 @@ const getRoleText = (role) => {
   return roleMap[role] || role
 }
 
+// 按指定键去重数组
+const deduplicateByKey = (array, key) => {
+  const seen = new Set()
+  return array.filter(item => {
+    const value = item[key]
+    if (seen.has(value)) {
+      return false
+    }
+    seen.add(value)
+    return true
+  })
+}
+
 const loadDashboardData = async () => {
   try {
     // 检查用户是否已登录
@@ -283,17 +296,17 @@ const loadDashboardData = async () => {
           pendingCount: data.pendingCount || 0
         }
         
-        // 更新任务列表
-        myTasks.value = data.recentTasks || []
+        // 更新任务列表（去重）
+        myTasks.value = deduplicateByKey(data.recentTasks || [], 'id')
         
-        // 更新工时记录
-        recentTimeEntries.value = data.recentTimeEntries || []
+        // 更新工时记录（去重）
+        recentTimeEntries.value = deduplicateByKey(data.recentTimeEntries || [], 'id')
         
-        // 更新项目列表
-        myProjects.value = data.recentProjects || []
+        // 更新项目列表（去重）
+        myProjects.value = deduplicateByKey(data.recentProjects || [], 'id')
         
-        // 更新待审核工时
-        pendingApprovals.value = data.pendingApprovals || []
+        // 更新待审核工时（去重）
+        pendingApprovals.value = deduplicateByKey(data.pendingApprovals || [], 'id')
       }
     } catch (error) {
       console.error('加载工作台数据失败:', error)

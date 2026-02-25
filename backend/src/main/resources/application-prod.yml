@@ -1,8 +1,9 @@
-# 基础配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
 spring:
-  profiles:
-    active: test  # 默认激活测试环境
-  
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/timetracking?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
@@ -21,15 +22,10 @@ jasypt:
     iv-generator-classname: org.jasypt.iv.NoIvGenerator
     string-output-type: base64
 
-server:
-  port: 8080
-  servlet:
-    context-path: /api
-
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -41,8 +37,10 @@ jwt:
   secret: timetracking-secret-key-2025
   expiration: 86400000  # 24小时
 
-# 日志配置（会被环境特定配置覆盖）
 logging:
   level:
-    com.timetracking: debug
-    org.springframework.security: debug
+    com.timetracking: info
+    org.springframework.security: info
+    org.apache.ibatis: warn
+    com.baomidou.mybatisplus: warn
+    java.sql: warn

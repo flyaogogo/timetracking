@@ -101,8 +101,11 @@ mvn clean compile
 # 运行测试（可选）
 mvn test
 
-# 启动应用
+# 启动应用 (默认环境：test)
 mvn spring-boot:run
+
+mvn spring-boot:run -Dspring.profiles.active=test
+mvn spring-boot:run -Dspring.profiles.active=prod
 
 # 或者打包后运行
 mvn clean package
@@ -157,12 +160,15 @@ npm run dev
 # 后台构建项目
 mvn clean package -DskipTests
 
-# 启动服务（方式一：直接运行）
+# 启动服务（方式一：直接运行，默认环境：test）
 java -jar target/timetracking-backend-1.0.0.jar
+或
+java -jar target/timetracking-backend-1.0.0.jar --spring.profiles.active=prod
 
-# 启动服务（方式二：使用 nohup 后台运行）
+# 启动服务（方式二：使用 nohup 后台运行，默认环境：test）
 nohup java -jar target/timetracking-backend-1.0.0.jar > backend.log 2>&1 &
-
+或
+nohup java -jar target/timetracking-backend-1.0.0.jar --spring.profiles.active=prod > backend.log 2>&1 &
 # 前端
 # 安装依赖
 npm install

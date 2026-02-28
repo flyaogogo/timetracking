@@ -81,7 +81,7 @@ public class Task {
     private Integer delayDays;
     
     public enum TaskType {
-        DEVELOPMENT, TESTING, DESIGN, DOCUMENT
+        DEVELOPMENT, TESTING, DESIGN, DOCUMENT, DELIVERY, REQUIREMENT, OTHER
     }
     
     public enum TaskStatus {

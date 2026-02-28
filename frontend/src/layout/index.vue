@@ -107,6 +107,15 @@
             <template #title>工时记录</template>
           </el-menu-item>
           
+          <!-- 个人工时统计 -->
+          <el-menu-item 
+            v-if="hasMenuPermission('timeEntries')"
+            index="/personal-time-statistics"
+          >
+            <el-icon><TrendCharts /></el-icon>
+            <template #title>个人工时统计</template>
+          </el-menu-item>
+          
           <!-- 工时审核 -->
           <el-menu-item 
             v-if="hasMenuPermission('approvals')"

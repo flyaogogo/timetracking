@@ -15,8 +15,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
     
     @Select("SELECT p.*, u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date < CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date < CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date < CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN users u ON p.manager_id = u.id " +
             "LEFT JOIN (" +
@@ -30,8 +34,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
     
     @Select("SELECT p.*, u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date < CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date < CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date < CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN users u ON p.manager_id = u.id " +
             "LEFT JOIN (" +
@@ -49,8 +57,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
     @Select("<script>" +
             "SELECT p.*, u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date &lt; CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN users u ON p.manager_id = u.id " +
             "LEFT JOIN (" +
@@ -82,8 +94,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "p.completion_percentage, p.resource_utilization, p.team_velocity, p.burn_rate, p.roi_percentage, " +
             "u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date &lt; CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days, " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days, " +
             "CASE WHEN p.manager_id = #{userId} THEN 1 ELSE COALESCE(pm.is_project_manager, 0) END as is_project_manager, " +
             "COALESCE(pm.is_tech_leader, 0) as is_tech_leader, " +
             "COALESCE(pm.role, 'MANAGER') as role " +
@@ -112,8 +128,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
     @Select("<script>" +
             "SELECT p.*, u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date &lt; CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN users u ON p.manager_id = u.id " +
             "LEFT JOIN (" +
@@ -141,8 +161,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "p.completion_percentage, p.resource_utilization, p.team_velocity, p.burn_rate, p.roi_percentage, " +
             "u.real_name as manager_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
-            "CASE WHEN p.planned_end_date &lt; CURDATE() AND p.status != 'COMPLETED' " +
-            "THEN DATEDIFF(CURDATE(), p.planned_end_date) ELSE 0 END as delay_days " +
+            "CASE " +
+            "WHEN p.status = 'COMPLETED' THEN 0 " +
+            "WHEN p.status = 'CANCELLED' THEN 0 " +
+            "WHEN (p.actual_start_date IS NOT NULL OR p.start_date IS NOT NULL) AND p.planned_end_date IS NOT NULL AND p.planned_end_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_end_date) " +
+            "WHEN (p.actual_start_date IS NULL AND p.start_date IS NULL) AND p.planned_start_date IS NOT NULL AND p.planned_start_date &lt; CURDATE() THEN DATEDIFF(CURDATE(), p.planned_start_date) " +
+            "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = #{userId} " +
             "LEFT JOIN users u ON p.manager_id = u.id " +

@@ -229,21 +229,37 @@ public class ProjectStatisticsEnhancedService {
             scheduleStats.setActualDuration(actualDuration);
             
             // 计算延期天数
-            if (scheduleStats.getPlannedEndDate() != null) {
-                int delayDays = (int) ChronoUnit.DAYS.between(
-                    scheduleStats.getPlannedEndDate(), 
-                    endDate
-                );
-                scheduleStats.setDelayDays(delayDays);
-                
-                // 确定工期状态
-                if (delayDays > 7) {
-                    scheduleStats.setScheduleStatus("DELAYED");
-                } else if (delayDays < -7) {
-                    scheduleStats.setScheduleStatus("AHEAD");
-                } else {
-                    scheduleStats.setScheduleStatus("ON_SCHEDULE");
+            int delayDays = 0;
+            if (project.getStatus() != Project.ProjectStatus.COMPLETED) {
+                if (scheduleStats.getPlannedEndDate() != null) {
+                    if ((scheduleStats.getActualStartDate() != null || project.getStartDate() != null)) {
+                        // 项目已开始且已超计划结束日期
+                        if (scheduleStats.getPlannedEndDate().isBefore(endDate)) {
+                            delayDays = (int) ChronoUnit.DAYS.between(
+                                scheduleStats.getPlannedEndDate(), 
+                                endDate
+                            );
+                        }
+                    } else if (scheduleStats.getPlannedStartDate() != null) {
+                        // 项目未开始但计划开始日期已过
+                        if (scheduleStats.getPlannedStartDate().isBefore(endDate)) {
+                            delayDays = (int) ChronoUnit.DAYS.between(
+                                scheduleStats.getPlannedStartDate(), 
+                                endDate
+                            );
+                        }
+                    }
                 }
+            }
+            scheduleStats.setDelayDays(delayDays);
+            
+            // 确定工期状态
+            if (delayDays > 7) {
+                scheduleStats.setScheduleStatus("DELAYED");
+            } else if (delayDays < -7) {
+                scheduleStats.setScheduleStatus("AHEAD");
+            } else {
+                scheduleStats.setScheduleStatus("ON_SCHEDULE");
             }
         }
         

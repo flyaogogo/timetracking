@@ -230,6 +230,9 @@
                 <el-option label="测试" value="TESTING" />
                 <el-option label="设计" value="DESIGN" />
                 <el-option label="文档" value="DOCUMENT" />
+                <el-option label="交付" value="DELIVERY" />
+                <el-option label="需求" value="REQUIREMENT" />
+                <el-option label="其他" value="OTHER" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -434,6 +437,34 @@
             <el-option label="已暂停" value="PAUSED" />
           </el-select>
         </el-form-item>
+        
+        <el-form-item label="状态说明">
+          <el-collapse v-model="statusExplanationCollapse" class="status-explanation-collapse">
+            <el-collapse-item title="点击查看状态变更说明" name="1">
+              <div class="status-explanation-content">
+                <div class="status-item">
+                  <strong>待开始 (TODO):</strong> 任务尚未开始，进度为0%
+                </div>
+                <div class="status-item">
+                  <strong>进行中 (IN_PROGRESS):</strong> 任务正在执行中，进度0-90%
+                </div>
+                <div class="status-item">
+                  <strong>待审核 (REVIEW):</strong> 任务接近完成，进度90-99%
+                </div>
+                <div class="status-item">
+                  <strong>已完成 (COMPLETED):</strong> 任务已完成，进度100%
+                </div>
+                <div class="status-item">
+                  <strong>已暂停 (PAUSED):</strong> 任务暂时停止，保持当前进度
+                </div>
+                <div class="status-tip">
+                  <el-icon><WarningFilled /></el-icon>
+                  <span>状态变更后将保持不变，不会被系统自动覆盖</span>
+                </div>
+              </div>
+            </el-collapse-item>
+          </el-collapse>
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -499,6 +530,7 @@ import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUs
 import { getProjectList } from '@/api/project'
 import { getUserList } from '@/api/user'
 import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
+import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -518,6 +550,7 @@ const selectedTasks = ref([])
 const currentTaskId = ref(null)
 const currentProgress = ref(0)
 const currentStatus = ref('')
+const statusExplanationCollapse = ref([])
 const activeTaskCollapse = ref([]) // 任务表单折叠面板控制
 
 // Excel导入相关变量
@@ -930,7 +963,10 @@ const getTaskTypeColor = (type) => {
     'DEVELOPMENT': 'primary',
     'TESTING': 'success',
     'DESIGN': 'warning',
-    'DOCUMENT': 'info'
+    'DOCUMENT': 'info',
+    'DELIVERY': 'danger',
+    'REQUIREMENT': 'purple',
+    'OTHER': 'default'
   }
   return colorMap[type] || 'info'
 }
@@ -941,7 +977,10 @@ const getTaskTypeText = (type) => {
     'DEVELOPMENT': '开发',
     'TESTING': '测试',
     'DESIGN': '设计',
-    'DOCUMENT': '文档'
+    'DOCUMENT': '文档',
+    'DELIVERY': '交付',
+    'REQUIREMENT': '需求',
+    'OTHER': '其他'
   }
   return textMap[type] || type
 }
@@ -1125,5 +1164,34 @@ onMounted(() => {
   font-size: 12px;
   color: #67C23A;
   line-height: 1.4;
+}
+
+/* 状态变更说明折叠面板样式 */
+.status-explanation-collapse {
+  width: 100%;
+}
+
+.status-explanation-content {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 0;
+}
+
+.status-item {
+  margin-bottom: 8px;
+}
+
+.status-tip {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #E4E7ED;
+  display: flex;
+  align-items: center;
+  color: #E6A23C;
+  font-size: 12px;
+}
+
+.status-tip .el-icon {
+  margin-right: 6px;
 }
 </style>

@@ -4,9 +4,11 @@ import com.timetracking.mapper.DashboardMapper;
 import com.timetracking.mapper.ProjectMemberMapper;
 import com.timetracking.mapper.TaskMapper;
 import com.timetracking.mapper.TimeEntryMapper;
+import com.timetracking.mapper.ProjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,9 @@ public class DashboardService {
     
     @Autowired
     private TimeEntryMapper timeEntryMapper;
+    
+    @Autowired
+    private ProjectMapper projectMapper;
     
     /**
      * 获取用户工作台数据
@@ -116,5 +121,116 @@ public class DashboardService {
         timeStats.put("avgDailyHours", avgDailyHours != null ? avgDailyHours : 0.0);
         
         return timeStats;
+    }
+    
+    /**
+     * 获取用户指定月份的工时统计
+     */
+    public Map<String, Object> getUserMonthlyStats(Long userId, Integer year, Integer month) {
+        return dashboardMapper.getUserMonthlyHours(userId, year, month);
+    }
+    
+    /**
+     * 获取用户指定年度的工时统计
+     */
+    public Map<String, Object> getUserYearlyStats(Long userId, Integer year) {
+        return dashboardMapper.getUserYearlyHours(userId, year);
+    }
+    
+    /**
+     * 获取用户月度工时趋势（最近12个月）
+     */
+    public List<Map<String, Object>> getUserMonthlyTrend(Long userId) {
+        return dashboardMapper.getUserMonthlyTrend(userId);
+    }
+    
+    /**
+     * 获取用户项目工时分布
+     */
+    public List<Map<String, Object>> getUserProjectHoursDistribution(Long userId, Integer year, Integer month) {
+        return dashboardMapper.getUserProjectHoursDistribution(userId, year, month);
+    }
+    
+    /**
+     * 获取所有用户的月度工时统计
+     */
+    public List<Map<String, Object>> getAllUsersMonthlyStats(Integer year, Integer month) {
+        // 获取基本数据
+        List<Map<String, Object>> basicStats = dashboardMapper.getAllUsersMonthlyStats(year, month);
+        
+        // 对每个用户进行复杂计算
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> userStats : basicStats) {
+            Long userId = (Long) userStats.get("userId");
+            
+            // 计算项目数量
+            Integer projectCount = dashboardMapper.getUserProjectCountByMonth(userId, year, month);
+            userStats.put("projectCount", projectCount != null ? projectCount : 0);
+            
+            // 计算任务数量
+            Integer taskCount = dashboardMapper.getUserTaskCountByMonth(userId, year, month);
+            userStats.put("taskCount", taskCount != null ? taskCount : 0);
+            
+            // 初始化其他计算字段为默认值
+            userStats.put("taskCompletionRate", 0.0);
+            userStats.put("projectParticipation", 0.0);
+            userStats.put("taskDifficulty", 0.0);
+            userStats.put("workSaturation", 0.0);
+            userStats.put("overtime", 0.0);
+            
+            result.add(userStats);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 获取所有用户的年度工时统计
+     */
+    public List<Map<String, Object>> getAllUsersYearlyStats(Integer year) {
+        // 获取基本数据
+        List<Map<String, Object>> basicStats = dashboardMapper.getAllUsersYearlyStats(year);
+        
+        // 对每个用户进行复杂计算
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> userStats : basicStats) {
+            // 初始化其他计算字段为默认值
+            userStats.put("projectCount", 0);
+            userStats.put("taskCount", 0);
+            userStats.put("taskCompletionRate", 0.0);
+            userStats.put("projectParticipation", 0.0);
+            userStats.put("taskDifficulty", 0.0);
+            userStats.put("workSaturation", 0.0);
+            userStats.put("overtime", 0.0);
+            
+            result.add(userStats);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 获取所有用户的季度工时统计
+     */
+    public List<Map<String, Object>> getAllUsersQuarterlyStats(Integer year, Integer quarter) {
+        // 获取基本数据
+        List<Map<String, Object>> basicStats = dashboardMapper.getAllUsersQuarterlyStats(year, quarter);
+        
+        // 对每个用户进行复杂计算
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> userStats : basicStats) {
+            // 初始化其他计算字段为默认值
+            userStats.put("projectCount", 0);
+            userStats.put("taskCount", 0);
+            userStats.put("taskCompletionRate", 0.0);
+            userStats.put("projectParticipation", 0.0);
+            userStats.put("taskDifficulty", 0.0);
+            userStats.put("workSaturation", 0.0);
+            userStats.put("overtime", 0.0);
+            
+            result.add(userStats);
+        }
+        
+        return result;
     }
 }

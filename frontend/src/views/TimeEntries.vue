@@ -460,16 +460,14 @@ const formRules = {
   ]
 }
 
-// 过滤后的任务列表 - 显示当前项目的所有任务
+// 过滤后的任务列表 - 显示当前项目的所有未完成任务
 const filteredTasks = computed(() => {
   return tasks.value.filter(task => {
     // 确保类型匹配，将两者都转换为字符串进行比较
-
-    // 只显示当前用户执行的任务 暂时注释
-    return String(task.projectId) === String(form.projectId) && task.assigneeId === userStore.user?.id
-    
-    // 显示当前项目的所有任务，而不仅仅是分配给自己的
-    //return String(task.projectId) === String(form.projectId)
+    // 只显示当前用户执行的未完成任务
+    return String(task.projectId) === String(form.projectId) && 
+           task.assigneeId === userStore.user?.id &&
+           task.status !== 'COMPLETED'
   })
 })
 

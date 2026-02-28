@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.timetracking.entity.TimeEntry;
+import com.timetracking.entity.Task;
 import com.timetracking.mapper.TimeEntryMapper;
 import com.timetracking.mapper.ProjectMapper;
+import com.timetracking.mapper.TaskMapper;
 import com.timetracking.util.PermissionUtil;
 import com.timetracking.util.EnhancedPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,9 @@ public class TimeEntryService extends ServiceImpl<TimeEntryMapper, TimeEntry> {
     
     @Autowired
     private ProjectMapper projectMapper;
+    
+    @Autowired
+    private TaskMapper taskMapper;
     
     @Autowired
     private TimeTrackingStatisticsService statisticsService;
@@ -104,9 +109,25 @@ public class TimeEntryService extends ServiceImpl<TimeEntryMapper, TimeEntry> {
     }
     
     /**
+     * 检查任务是否已完成
+     */
+    private boolean isTaskCompleted(Long taskId) {
+        if (taskId == null) {
+            return false;
+        }
+        Task task = taskMapper.selectById(taskId);
+        return task != null && "COMPLETED".equals(task.getStatus());
+    }
+    
+    /**
      * 创建工时记录
      */
     public TimeEntry createTimeEntry(TimeEntry timeEntry) {
+        // 检查任务是否已完成
+        if (isTaskCompleted(timeEntry.getTaskId())) {
+            throw new IllegalArgumentException("不能为已完成的任务记录工时");
+        }
+        
         timeEntry.setStatus(TimeEntry.ApprovalStatus.PENDING);
         timeEntry.setCreateTime(LocalDateTime.now());
         save(timeEntry);
@@ -123,6 +144,11 @@ public class TimeEntryService extends ServiceImpl<TimeEntryMapper, TimeEntry> {
      * 更新工时记录
      */
     public TimeEntry updateTimeEntry(TimeEntry timeEntry) {
+        // 检查任务是否已完成
+        if (isTaskCompleted(timeEntry.getTaskId())) {
+            throw new IllegalArgumentException("不能为已完成的任务记录工时");
+        }
+        
         TimeEntry oldEntry = getById(timeEntry.getId());
         timeEntry.setUpdateTime(LocalDateTime.now());
         updateById(timeEntry);

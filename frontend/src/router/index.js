@@ -40,6 +40,24 @@ const routes = [
         }
       },
       {
+        path: 'personal-time-statistics',
+        name: 'PersonalTimeStatistics',
+        component: () => import('@/views/PersonalTimeStatistics.vue'),
+        meta: { 
+          title: '个人工时统计',
+          roles: ['ADMIN', 'PROJECT_MANAGER', 'PRODUCT_MANAGER', 'DEPARTMENT_MANAGER', 'DEVELOPER', 'TESTER']
+        }
+      },
+      {
+        path: 'user-performance-ranking',
+        name: 'UserPerformanceRanking',
+        component: () => import('@/views/UserPerformanceRanking.vue'),
+        meta: { 
+          title: '员工工作表现排名',
+          roles: ['ADMIN', 'DEPARTMENT_MANAGER']
+        }
+      },
+      {
         path: 'project-manager',
         name: 'ProjectManagerDashboard',
         component: () => import('@/views/ProjectManagerDashboard.vue'),
@@ -91,6 +109,15 @@ const routes = [
         meta: { 
           title: '团队管理',
           roles: ['ADMIN', 'PROJECT_MANAGER']
+        }
+      },
+      {
+        path: 'project-manager/team-overview',
+        name: 'ProjectManagerTeamOverview',
+        component: () => import('@/views/TeamOverview.vue'),
+        meta: {
+          title: '团队员工工作情况',
+          roles: ['ADMIN', 'DEPARTMENT_MANAGER', 'PROJECT_MANAGER']
         }
       },
       {
@@ -265,6 +292,7 @@ const routes = [
           roles: ['ADMIN', 'PROJECT_MANAGER', 'DEPARTMENT_MANAGER']
         }
       },
+
       {
         path: 'project-member-debug',
         name: 'ProjectMemberDebug',

@@ -11,6 +11,7 @@ import com.timetracking.mapper.ProjectMemberMapper;
 import com.timetracking.util.PermissionUtil;
 import com.timetracking.util.EnhancedPermissionUtil;
 import com.timetracking.service.TimeTrackingStatisticsService;
+import com.timetracking.service.ProjectStatusManagementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +32,9 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
     
     @Autowired
     private TimeTrackingStatisticsService statisticsService;
+    
+    @Autowired
+    private ProjectStatusManagementService projectStatusManagementService;
     
     public IPage<Task> getTaskList(int current, int size, Long projectId, String keyword) {
         Page<Task> page = new Page<>(current, size);
@@ -139,6 +143,8 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         // 创建任务后，更新项目工时汇总
         if (task.getProjectId() != null) {
             statisticsService.updateProjectActualHours(task.getProjectId());
+            // 任务创建后，自动调整项目状态
+            projectStatusManagementService.autoAdjustProjectStatus(task.getProjectId());
         }
         
         return task;
@@ -153,6 +159,12 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         // 更新任务后，重新计算实际工时和进度
         if (task.getId() != null) {
             statisticsService.updateTaskActualHoursAndProgress(task.getId());
+            // 获取任务的项目ID
+            Task updatedTask = getById(task.getId());
+            if (updatedTask != null && updatedTask.getProjectId() != null) {
+                // 任务更新后，自动调整项目状态
+                projectStatusManagementService.autoAdjustProjectStatus(updatedTask.getProjectId());
+            }
         }
         
         return getById(task.getId());
@@ -209,6 +221,13 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 状态更新后，重新计算实际工时和进度
         statisticsService.updateTaskActualHoursAndProgress(id);
+        
+        // 获取任务的项目ID
+        Task updatedTask = getById(id);
+        if (updatedTask != null && updatedTask.getProjectId() != null) {
+            // 任务状态更新后，自动调整项目状态
+            projectStatusManagementService.autoAdjustProjectStatus(updatedTask.getProjectId());
+        }
     }
     
     /**
@@ -474,7 +493,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 设置数据验证（下拉列表）
         // 任务类型下拉列表
-        String[] taskTypes = {"DEVELOPMENT", "TESTING", "DESIGN", "DOCUMENT"};
+        String[] taskTypes = {"DEVELOPMENT", "TESTING", "DESIGN", "DOCUMENT", "DELIVERY", "REQUIREMENT", "OTHER"};
         org.apache.poi.ss.util.CellRangeAddressList taskTypeRange = new org.apache.poi.ss.util.CellRangeAddressList(2, 1000, 3, 3);
         org.apache.poi.ss.usermodel.DataValidationHelper dvHelper = sheet.getDataValidationHelper();
         org.apache.poi.ss.usermodel.DataValidationConstraint taskTypeConstraint = dvHelper.createExplicitListConstraint(taskTypes);

@@ -139,7 +139,10 @@
             <div v-for="entry in recentTimeEntries" :key="entry.id" class="time-entry-item">
               <div class="entry-info">
                 <div class="entry-date">{{ entry.workDate }}</div>
-                <div class="entry-project">{{ entry.projectName }}</div>
+                <div class="entry-tags">
+                  <el-tag size="small" effect="plain">{{ entry.projectName }}</el-tag>
+                  <el-tag size="small" effect="plain" v-if="entry.taskName">{{ entry.taskName }}</el-tag>
+                </div>
               </div>
               <div class="entry-hours">
                 {{ entry.duration }}h
@@ -261,6 +264,7 @@ const getRoleText = (role) => {
 
 // 按指定键去重数组
 const deduplicateByKey = (array, key) => {
+  if (!array) return []
   const seen = new Set()
   return array.filter(item => {
     const value = item[key]
@@ -475,6 +479,18 @@ onMounted(() => {
 .task-project, .entry-project, .project-role, .approval-project {
   font-size: 12px;
   color: #666;
+}
+
+.entry-tags {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.entry-tags .el-tag {
+  margin-right: 4px;
+  margin-bottom: 4px;
 }
 
 .entry-hours {

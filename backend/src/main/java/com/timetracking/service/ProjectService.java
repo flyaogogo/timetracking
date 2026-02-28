@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.timetracking.entity.Project;
 import com.timetracking.mapper.ProjectMapper;
 import com.timetracking.mapper.ProjectMemberMapper;
+import com.timetracking.service.ProjectStatusManagementService;
 import com.timetracking.util.PermissionUtil;
 import com.timetracking.util.EnhancedPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
     
     @Autowired
     private ProjectMemberMapper projectMemberMapper;
+    
+    @Autowired
+    private ProjectStatusManagementService projectStatusManagementService;
     
     public IPage<Project> getProjectList(int current, int size, String keyword) {
         return getProjectList(current, size, keyword, null);
@@ -177,6 +181,9 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
             // 如果插入失败，记录日志但不影响项目创建
             System.err.println("Failed to add project manager to project members: " + e.getMessage());
         }
+        
+        // 项目创建后，自动调整状态
+        projectStatusManagementService.autoAdjustProjectStatus(project.getId());
         
         return project;
     }

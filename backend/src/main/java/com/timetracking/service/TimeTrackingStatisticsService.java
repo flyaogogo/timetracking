@@ -159,9 +159,11 @@ public class TimeTrackingStatisticsService {
             return null;
         }
         
-        // 如果任务已经是完成或取消状态，不自动更改
+        // 如果任务已经是完成、取消、暂停或进行中状态，不自动更改
         if (task.getStatus() == Task.TaskStatus.COMPLETED || 
-            task.getStatus() == Task.TaskStatus.CANCELLED) {
+            task.getStatus() == Task.TaskStatus.CANCELLED ||
+            task.getStatus() == Task.TaskStatus.PAUSED ||
+            task.getStatus() == Task.TaskStatus.IN_PROGRESS) {
             return null;
         }
         

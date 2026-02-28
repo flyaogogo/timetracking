@@ -1,6 +1,7 @@
 package com.timetracking.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.EnumValue;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -71,7 +72,20 @@ public class TimeEntry {
     private String managerName;
     
     public enum WorkType {
-        NORMAL, OVERTIME, HOLIDAY
+        NORMAL("NORMAL"),
+        OVERTIME("OVERTIME"),
+        HOLIDAY("HOLIDAY");
+        
+        @EnumValue
+        private final String value;
+        
+        WorkType(String value) {
+            this.value = value;
+        }
+        
+        public String getValue() {
+            return value;
+        }
     }
     
     public enum ApprovalStatus {

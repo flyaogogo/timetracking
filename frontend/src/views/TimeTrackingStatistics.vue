@@ -66,21 +66,30 @@
               <el-table-column prop="taskName" label="任务名称" width="200" />
               <el-table-column prop="projectName" label="所属项目" width="120" />
               <el-table-column prop="assigneeName" label="执行人" width="100" />
-              <el-table-column prop="estimatedHours" label="预估工时" width="100">
+              <el-table-column prop="estimatedHours" label="预估工时" width="150">
                 <template #default="{ row }">
-                  {{ row.estimatedHours || 0 }}h
+                  {{ row.estimatedHours || 0 }}h / {{ ((row.estimatedHours || 0) / 8).toFixed(1) }}天
                 </template>
               </el-table-column>
-              <el-table-column prop="actualHours" label="实际工时" width="100">
+              <el-table-column prop="actualHours" label="实际工时" width="150">
                 <template #default="{ row }">
                   <span :class="getHoursVarianceClass(row)">
-                    {{ row.actualHours || 0 }}h
+                    {{ row.actualHours || 0 }}h / {{ ((row.actualHours || 0) / 8).toFixed(1) }}天
                   </span>
                 </template>
               </el-table-column>
               <el-table-column prop="progress" label="进度" width="120">
                 <template #default="{ row }">
-                  <el-progress :percentage="row.progress || 0" :stroke-width="8" />
+                  <el-progress 
+                    :percentage="parseFloat((row.progress || 0).toFixed(1))" 
+                    :stroke-width="12" 
+                    text-inside
+                    style="font-size: 12px;"
+                  >
+                    <template #default>
+                      {{ parseFloat((row.progress || 0).toFixed(1)) }}%
+                    </template>
+                  </el-progress>
                 </template>
               </el-table-column>
               <el-table-column prop="status" label="状态" width="100">
@@ -132,32 +141,38 @@
               <el-table-column prop="projectName" label="项目名称" min-width="150" />
               <el-table-column prop="totalTasks" label="任务总数" width="100" />
               <el-table-column prop="completedTasks" label="已完成" width="100" />
-              <el-table-column prop="estimatedHours" label="预估工时" width="100">
+              <el-table-column prop="estimatedHours" label="预估工时" width="150">
                 <template #default="{ row }">
-                  {{ row.estimatedHours || 0 }}h
+                  {{ row.estimatedHours || 0 }}h / {{ ((row.estimatedHours || 0) / 8).toFixed(1) }}天
                 </template>
               </el-table-column>
-              <el-table-column prop="actualHours" label="实际工时" width="100">
+              <el-table-column prop="actualHours" label="实际工时" width="150">
                 <template #default="{ row }">
                   <span :class="getProjectHoursVarianceClass(row)">
-                    {{ row.actualHours || 0 }}h
+                    {{ row.actualHours || 0 }}h / {{ ((row.actualHours || 0) / 8).toFixed(1) }}天
                   </span>
                 </template>
               </el-table-column>
-              <el-table-column label="工时偏差" width="100">
+              <el-table-column label="工时偏差" width="150">
                 <template #default="{ row }">
                   <span :class="getVarianceClass(row)">
-                    {{ calculateVariance(row) }}
+                    {{ calculateVariance(row) }} / {{ calculateVarianceInDays(row) }}
                   </span>
                 </template>
               </el-table-column>
               <el-table-column prop="taskCompletionRate" label="任务完成率" width="120">
                 <template #default="{ row }">
                   <el-progress 
-                    :percentage="row.taskCompletionRate || 0" 
-                    :stroke-width="8"
+                    :percentage="parseFloat((row.taskCompletionRate || 0).toFixed(1))" 
+                    :stroke-width="12" 
                     :color="getCompletionRateColor(row.taskCompletionRate)"
-                  />
+                    text-inside
+                    style="font-size: 12px;"
+                  >
+                    <template #default>
+                      {{ parseFloat((row.taskCompletionRate || 0).toFixed(1)) }}%
+                    </template>
+                  </el-progress>
                 </template>
               </el-table-column>
               <el-table-column prop="approvedEntries" label="已审核工时" width="100" />
@@ -871,6 +886,17 @@ const calculateVariance = (row) => {
   return variance >= 0 ? `+${formattedVariance}h` : `${formattedVariance}h`
 }
 
+// 计算天数偏差
+const calculateVarianceInDays = (row) => {
+  if (!row.estimatedHours || !row.actualHours) {
+    return '0天'
+  }
+  
+  const variance = (row.actualHours - row.estimatedHours) / 8
+  const formattedVariance = variance.toFixed(1)
+  return variance >= 0 ? `+${formattedVariance}天` : `${formattedVariance}天`
+}
+
 // 计算偏差百分比
 const calculateVariancePercentage = (row) => {
   if (!row.estimatedHours || row.estimatedHours === 0) {
@@ -1409,4 +1435,6 @@ onMounted(() => {
 .text-success {
   color: #67c23a;
 }
+
+
 </style>

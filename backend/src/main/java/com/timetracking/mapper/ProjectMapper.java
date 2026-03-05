@@ -136,13 +136,14 @@ public interface ProjectMapper extends BaseMapper<Project> {
             "ELSE 0 END as delay_days " +
             "FROM projects p " +
             "LEFT JOIN users u ON p.manager_id = u.id " +
+            "LEFT JOIN project_members pm ON p.id = pm.project_id AND pm.user_id = #{userId} " +
             "LEFT JOIN (" +
             "  SELECT te.project_id, SUM(te.duration) as actual_hours " +
             "  FROM time_entries te " +
             "  WHERE te.status = 'APPROVED' " +
             "  GROUP BY te.project_id" +
             ") te_stats ON p.id = te_stats.project_id " +
-            "WHERE p.manager_id = #{userId} " +
+            "WHERE p.manager_id = #{userId} OR (pm.user_id IS NOT NULL AND pm.is_project_manager = 1) " +
             "ORDER BY p.create_time DESC" +
             "</script>")
     IPage<Project> selectManagedProjects(Page<Project> page, @Param("userId") Long userId);

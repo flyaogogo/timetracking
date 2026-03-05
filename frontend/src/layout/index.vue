@@ -215,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
@@ -267,14 +267,18 @@ const hasMenuPermission = (menuKey) => {
 
 // 检查项目经理工作台权限
 const checkProjectManagerDashboardPermission = async () => {
-  const userRole = userStore.user?.role
-  if (!userRole) {
+  console.log('开始检查项目经理工作台权限')
+  console.log('用户信息:', userStore.user)
+  
+  if (!userStore.user) {
+    console.log('用户未登录，不显示经理工作台')
     showProjectManagerDashboard.value = false
     return
   }
   
   try {
-    const hasPermission = await hasProjectManagerDashboardPermission(userRole)
+    console.log('调用hasProjectManagerDashboardPermission函数')
+    const hasPermission = await hasProjectManagerDashboardPermission()
     showProjectManagerDashboard.value = hasPermission
     console.log('项目经理工作台权限检查结果:', hasPermission)
   } catch (error) {
@@ -359,6 +363,38 @@ const handleCommand = async (command) => {
       break
   }
 }
+
+// 监听用户登录状态变化
+watch(
+  () => userStore.token,
+  (newToken) => {
+    console.log('用户Token变化:', newToken)
+    if (newToken) {
+      console.log('用户已登录，检查项目经理工作台权限')
+      // 延迟一下，确保user信息已经更新
+      setTimeout(() => {
+        checkProjectManagerDashboardPermission()
+      }, 100)
+    } else {
+      console.log('用户已登出，隐藏经理工作台')
+      showProjectManagerDashboard.value = false
+    }
+  },
+  { deep: true, immediate: true }
+)
+
+// 监听用户信息变化
+watch(
+  () => userStore.user,
+  (newUser) => {
+    console.log('用户信息变化:', newUser)
+    if (newUser && userStore.token) {
+      console.log('用户信息已更新，检查项目经理工作台权限')
+      checkProjectManagerDashboardPermission()
+    }
+  },
+  { deep: true, immediate: true }
+)
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)

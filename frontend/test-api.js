@@ -1,21 +1,71 @@
-const axios = require('axios');
+// 使用Node.js 18+内置的fetch函数
 
-async function testApi() {
+async function testLogin() {
   try {
-    console.log('Testing monthly stats API...');
-    const monthlyResponse = await axios.get('http://localhost:8080/api/dashboard/all-users/monthly-stats?year=2026&month=2');
-    console.log('Monthly stats response:', monthlyResponse.data);
+    const response = await fetch('http://localhost:8080/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: 'xujun',
+        password: '123456'
+      })
+    });
     
-    console.log('\nTesting yearly stats API...');
-    const yearlyResponse = await axios.get('http://localhost:8080/api/dashboard/all-users/yearly-stats?year=2026');
-    console.log('Yearly stats response:', yearlyResponse.data);
+    console.log('登录API响应状态:', response.status);
+    const data = await response.json();
+    console.log('登录API响应数据:', data);
     
-    console.log('\nTesting quarterly stats API...');
-    const quarterlyResponse = await axios.get('http://localhost:8080/api/dashboard/all-users/quarterly-stats?year=2026&quarter=1');
-    console.log('Quarterly stats response:', quarterlyResponse.data);
+    if (data.code === 200 && data.data.token) {
+      console.log('登录成功，获取到token:', data.data.token);
+      return data.data.token;
+    } else {
+      console.log('登录失败:', data.message);
+      return null;
+    }
   } catch (error) {
-    console.error('Error testing API:', error.response ? error.response.data : error.message);
+    console.error('登录API调用失败:', error);
+    return null;
   }
 }
 
-testApi();
+async function testPermissionCheck(token) {
+  try {
+    const response = await fetch('http://localhost:8080/api/project-manager/check-permission', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('权限检查API响应状态:', response.status);
+    const data = await response.json();
+    console.log('权限检查API响应数据:', data);
+    
+    if (data.code === 200) {
+      console.log('权限检查成功');
+      console.log('isProjectManager:', data.data.isProjectManager);
+      console.log('managedProjectsCount:', data.data.managedProjectsCount);
+      return data.data;
+    } else {
+      console.log('权限检查失败:', data.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('权限检查API调用失败:', error);
+    return null;
+  }
+}
+
+async function runTests() {
+  console.log('开始测试登录API...');
+  const token = await testLogin();
+  
+  if (token) {
+    console.log('\n开始测试权限检查API...');
+    await testPermissionCheck(token);
+  }
+}
+
+runTests();

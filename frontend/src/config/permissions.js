@@ -80,22 +80,18 @@ export function getAccessibleMenus(userRole) {
 // 检查是否为项目级别的项目经理
 export async function isProjectLevelManager() {
   try {
-    const token = localStorage.getItem('token')
-    if (!token) return false
+    console.log('开始调用项目级别项目经理权限检查API')
+    const request = await import('@/utils/request')
+    const response = await request.default.get('/project-manager/check-permission')
     
-    const response = await fetch('http://localhost:8080/api/project-manager/check-permission', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    if (response.ok) {
-      const result = await response.json()
-      if (result.code === 200) {
-        // 只有真正担任项目经理的用户才返回true
-        return result.data.isProjectManager && result.data.managedProjectsCount > 0
-      }
+    console.log('API响应数据:', response)
+    if (response.code === 200) {
+      console.log('权限检查成功，isProjectManager:', response.data.isProjectManager)
+      console.log('管理的项目数量:', response.data.managedProjectsCount)
+      // 只有真正担任项目经理的用户才返回true
+      return response.data.isProjectManager && response.data.managedProjectsCount > 0
+    } else {
+      console.log('API返回错误代码:', response.code)
     }
     return false
   } catch (error) {
@@ -105,7 +101,7 @@ export async function isProjectLevelManager() {
 }
 
 // 检查项目经理工作台权限（只检查项目级别，不再检查全局角色）
-export async function hasProjectManagerDashboardPermission(userRole) {
+export async function hasProjectManagerDashboardPermission() {
   // 只检查项目级别权限，不再基于全局角色给予权限
   // 这确保只有真正被设置为项目经理的用户才能看到项目经理工作台
   return await isProjectLevelManager()

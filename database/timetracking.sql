@@ -651,6 +651,9 @@ DROP TABLE IF EXISTS `v_user_project_permissions`;
  `expiry_date` date 
 )*/;
 
+
+ALTER TABLE timetracking.tasks MODIFY COLUMN task_type enum('DEVELOPMENT','TESTING','DESIGN','DOCUMENT','DELIVERY','REQUIREMENT','OTHER') COLLATE utf8mb4_unicode_ci DEFAULT 'DEVELOPMENT' COMMENT 'Task type';
+
 /*View structure for view v_user_project_permissions */
 
 /*!50001 DROP TABLE IF EXISTS `v_user_project_permissions` */;

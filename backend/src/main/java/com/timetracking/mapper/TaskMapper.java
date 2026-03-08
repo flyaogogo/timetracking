@@ -105,6 +105,8 @@ public interface TaskMapper extends BaseMapper<Task> {
     
     IPage<Task> selectUserRelatedTasksByProject(Page<Task> page, @Param("userId") Long userId, @Param("projectId") Long projectId, @Param("keyword") String keyword);
     
+    IPage<Task> selectUserRelatedTasksWithParentFilter(Page<Task> page, @Param("userId") Long userId, @Param("ew") com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Task> wrapper);
+    
     /**
      * 获取项目经理管理的项目的任务统计
      */

@@ -2,7 +2,9 @@ package com.timetracking.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.timetracking.entity.TimeEntry;
+import com.timetracking.entity.Task;
 import com.timetracking.service.TimeEntryService;
+import com.timetracking.service.TaskService;
 import com.timetracking.util.PermissionUtil;
 import com.timetracking.util.EnhancedPermissionUtil;
 import com.timetracking.vo.Result;
@@ -20,6 +22,9 @@ public class TimeEntryController {
     
     @Autowired
     private TimeEntryService timeEntryService;
+    
+    @Autowired
+    private TaskService taskService;
     
     @GetMapping
     public Result getTimeEntryList(@RequestParam(defaultValue = "1") int current,
@@ -301,20 +306,59 @@ public class TimeEntryController {
      */
     private boolean canApproveTimeEntry(Long userId, TimeEntry timeEntry) {
         if (userId == null || timeEntry == null) {
+            System.out.println("canApproveTimeEntry: userId or timeEntry is null");
             return false;
         }
         
+        System.out.println("canApproveTimeEntry: userId=" + userId + ", timeEntry.id=" + timeEntry.getId() + ", taskId=" + timeEntry.getTaskId() + ", projectId=" + timeEntry.getProjectId());
+        
         // 管理员可以审批所有工时记录
         if (PermissionUtil.isAdmin()) {
+            System.out.println("canApproveTimeEntry: user is admin, allowing approval");
             return true;
         }
         
         // 项目经理可以审批项目内的所有工时记录，包括自己的
-        if (timeEntry.getProjectId() != null && 
-            EnhancedPermissionUtil.canApproveTimesheet(userId, timeEntry.getProjectId())) {
-            return true;
+        if (timeEntry.getProjectId() != null) {
+            boolean hasProjectPermission = EnhancedPermissionUtil.canApproveTimesheet(userId, timeEntry.getProjectId());
+            System.out.println("canApproveTimeEntry: hasProjectPermission=" + hasProjectPermission);
+            if (hasProjectPermission) {
+                System.out.println("canApproveTimeEntry: user has project approval permission, allowing approval");
+                return true;
+            }
         }
         
+        // 任务的审核人可以审批该任务的工时记录
+        if (timeEntry.getTaskId() != null) {
+            System.out.println("canApproveTimeEntry: checking task reviewer permission for taskId=" + timeEntry.getTaskId());
+            try {
+                Task task = taskService.getById(timeEntry.getTaskId());
+                System.out.println("canApproveTimeEntry: task found=" + (task != null) + ", task.reviewerId=" + (task != null ? task.getReviewerId() : null));
+                if (task != null && userId != null && task.getReviewerId() != null) {
+                    System.out.println("canApproveTimeEntry: comparing userId=" + userId + " (type=" + userId.getClass().getName() + ") with task.reviewerId=" + task.getReviewerId() + " (type=" + task.getReviewerId().getClass().getName() + ")");
+                    boolean isReviewer = userId.equals(task.getReviewerId());
+                    System.out.println("canApproveTimeEntry: isReviewer=" + isReviewer);
+                    if (isReviewer) {
+                        System.out.println("canApproveTimeEntry: user is task reviewer, allowing approval");
+                        return true;
+                    } else {
+                        System.out.println("canApproveTimeEntry: user is not task reviewer, reviewerId=" + task.getReviewerId() + ", userId=" + userId);
+                    }
+                } else if (task != null) {
+                    System.out.println("canApproveTimeEntry: task exists but userId or reviewerId is null, userId=" + userId + ", reviewerId=" + task.getReviewerId());
+                } else {
+                    System.out.println("canApproveTimeEntry: task not found for taskId=" + timeEntry.getTaskId());
+                }
+            } catch (Exception e) {
+                System.out.println("canApproveTimeEntry: error checking task reviewer permission: " + e.getMessage());
+                e.printStackTrace();
+                // 忽略查询错误，继续检查其他权限
+            }
+        } else {
+            System.out.println("canApproveTimeEntry: timeEntry.taskId is null");
+        }
+        
+        System.out.println("canApproveTimeEntry: no approval permission found, denying approval");
         return false;
     }
 }

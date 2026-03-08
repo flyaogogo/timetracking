@@ -80,6 +80,9 @@ public class Task {
     @TableField(exist = false)
     private Integer delayDays;
     
+    @TableField(exist = false)
+    private Integer childCount;
+    
     public enum TaskType {
         DEVELOPMENT, TESTING, DESIGN, DOCUMENT, DELIVERY, REQUIREMENT, OTHER
     }

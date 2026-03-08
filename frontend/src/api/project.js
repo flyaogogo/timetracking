@@ -45,3 +45,10 @@ export const getUserProjects = (userId, params) => {
     params
   })
 }
+
+export const getProjectMembers = (projectId) => {
+  return request({
+    url: `/project-members/project/${projectId}`,
+    method: 'get'
+  })
+}

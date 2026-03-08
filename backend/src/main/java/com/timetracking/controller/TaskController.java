@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 import java.util.List;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
 @RestController
 @RequestMapping("/tasks")
@@ -31,12 +32,13 @@ public class TaskController {
     public Result getTaskList(@RequestParam(defaultValue = "1") int current,
                              @RequestParam(defaultValue = "10") int size,
                              @RequestParam(required = false) Long projectId,
-                             @RequestParam(required = false) String keyword) {
+                             @RequestParam(required = false) String keyword,
+                             @RequestParam(required = false) Long parentId) {
         try {
             Long currentUserId = PermissionUtil.getCurrentUserId();
             
             // 根据用户权限获取任务列表
-            IPage<Task> page = taskService.getTaskListByPermission(current, size, projectId, keyword, currentUserId);
+            IPage<Task> page = taskService.getTaskListByPermission(current, size, projectId, keyword, currentUserId, parentId);
             return Result.success("获取任务列表成功", page);
         } catch (Exception e) {
             return Result.error("获取任务列表失败: " + e.getMessage());
@@ -91,7 +93,8 @@ public class TaskController {
                               @RequestParam(defaultValue = "1") int current,
                               @RequestParam(defaultValue = "10") int size,
                               @RequestParam(required = false) Long projectId,
-                              @RequestParam(required = false) String keyword) {
+                              @RequestParam(required = false) String keyword,
+                              @RequestParam(required = false) Long parentId) {
         try {
             Long currentUserId = PermissionUtil.getCurrentUserId();
             
@@ -101,7 +104,7 @@ public class TaskController {
             }
             
             // 获取用户任务列表
-            IPage<Task> page = taskService.getTaskListByPermission(current, size, projectId, keyword, userId);
+            IPage<Task> page = taskService.getTaskListByPermission(current, size, projectId, keyword, userId, parentId);
             return Result.success("获取用户任务列表成功", page);
         } catch (Exception e) {
             return Result.error("获取用户任务列表失败: " + e.getMessage());
@@ -284,6 +287,62 @@ public class TaskController {
             taskService.downloadImportTemplate(response);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 获取任务的子任务
+     */
+    @GetMapping("/{id}/children")
+    public Result getTaskChildren(@PathVariable Long id) {
+        try {
+            Long currentUserId = PermissionUtil.getCurrentUserId();
+            Task task = taskService.getById(id);
+            
+            if (task == null) {
+                return Result.error("任务不存在");
+            }
+            
+            // 检查任务访问权限
+            if (!canAccessTask(currentUserId, task)) {
+                return Result.error("无权限访问该任务");
+            }
+            
+            // 获取子任务列表
+            List<Task> children = taskService.list(new QueryWrapper<Task>().eq("parent_id", id));
+            return Result.success("获取子任务成功", children);
+        } catch (Exception e) {
+            return Result.error("获取子任务失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 将任务升级为父任务
+     */
+    @PutMapping("/{id}/promote")
+    public Result promoteTaskToParent(@PathVariable Long id) {
+        try {
+            Long currentUserId = PermissionUtil.getCurrentUserId();
+            Task task = taskService.getById(id);
+            
+            if (task == null) {
+                return Result.error("任务不存在");
+            }
+            
+            // 检查任务修改权限
+            if (!canManageTasks(currentUserId, task.getProjectId())) {
+                return Result.error("无权限修改该任务");
+            }
+            
+            // 检查任务是否已经是子任务
+            if (task.getParentId() != null) {
+                return Result.error("子任务不能升级为父任务");
+            }
+            
+            // 任务已经是顶级任务，不需要升级
+            return Result.success("任务已经是父任务");
+        } catch (Exception e) {
+            return Result.error("升级任务失败: " + e.getMessage());
         }
     }
 }

@@ -181,4 +181,21 @@ public interface ProjectMemberMapper extends BaseMapper<ProjectMember> {
             "AND (effective_date IS NULL OR effective_date <= CURDATE()) " +
             "AND (expiry_date IS NULL OR expiry_date >= CURDATE())")
     List<Long> selectManagedProjectIdsByUser(@Param("userId") Long userId);
+    
+    /**
+     * 获取项目成员列表
+     */
+    @Select("SELECT " +
+            "pm.user_id as userId, " +
+            "u.real_name as userRealName, " +
+            "u.role as userRole, " +
+            "u.username, " +
+            "u.email, " +
+            "u.department, " +
+            "u.position " +
+            "FROM project_members pm " +
+            "LEFT JOIN users u ON pm.user_id = u.id " +
+            "WHERE pm.project_id = #{projectId} " +
+            "ORDER BY pm.join_date DESC")
+    List<Map<String, Object>> selectProjectMembers(@Param("projectId") Long projectId);
 }

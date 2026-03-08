@@ -48,6 +48,14 @@ export function hasMenuPermission(menuKey, userRole, additionalCheck = null) {
   const permissions = MENU_PERMISSIONS[menuKey]
   const hasRolePermission = permissions && permissions.includes(userRole)
   
+  // 特殊处理工时审核菜单，允许有项目级别权限的用户访问
+  if (menuKey === 'approvals') {
+    // 导入需要放在函数内部，避免循环依赖
+    import('@/utils/enhancedPermissions').then(EnhancedPermissionUtil => {
+      // 这里可以添加额外的权限检查逻辑
+    })
+  }
+  
   // 如果有额外的权限检查函数，也要通过
   if (additionalCheck && typeof additionalCheck === 'function') {
     return hasRolePermission || additionalCheck()

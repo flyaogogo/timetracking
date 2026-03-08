@@ -118,7 +118,7 @@
           
           <!-- 工时审核 -->
           <el-menu-item 
-            v-if="hasMenuPermission('approvals')"
+            v-if="hasMenuPermission('approvals') || hasApprovalPermission"
             index="/approvals"
           >
             <el-icon><Check /></el-icon>
@@ -240,6 +240,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { hasMenuPermission as checkMenuPermission, hasProjectManagerDashboardPermission } from '@/config/permissions'
+import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -247,6 +248,7 @@ const userStore = useUserStore()
 const isCollapsed = ref(false)
 const screenWidth = ref(window.innerWidth)
 const showProjectManagerDashboard = ref(false)
+const hasApprovalPermission = ref(false)
 
 // 计算侧边栏宽度
 const sidebarWidth = computed(() => {
@@ -284,6 +286,54 @@ const checkProjectManagerDashboardPermission = async () => {
   } catch (error) {
     console.error('检查项目经理工作台权限失败:', error)
     showProjectManagerDashboard.value = false
+  }
+}
+
+// 检查工时审核权限
+const checkApprovalPermission = async () => {
+  console.log('开始检查工时审核权限')
+  console.log('用户信息:', userStore.user)
+  
+  if (!userStore.user) {
+    console.log('用户未登录，不显示工时审核')
+    hasApprovalPermission.value = false
+    return
+  }
+  
+  try {
+    // 检查用户是否有任何项目的工时审核权限
+    const request = await import('@/utils/request')
+    
+    // 1. 先检查用户是否管理了项目
+    const permissionResponse = await request.default.get('/project-manager/check-permission')
+    
+    if (permissionResponse.code === 200) {
+      console.log('API响应数据:', permissionResponse.data)
+      
+      // 2. 检查用户是否有工时审核权限
+      // 只要用户在任何项目中担任管理角色（项目经理、技术负责人等），就应该有审核权限
+      // 这里简化处理，只要用户参与了项目，就认为有审核权限
+      const projectsResponse = await request.default.get('/projects')
+      
+      if (projectsResponse.code === 200) {
+        const userProjects = projectsResponse.data.records || []
+        console.log('用户参与的项目数量:', userProjects.length)
+        
+        // 只要用户参与了项目，就显示工时审核菜单
+        hasApprovalPermission.value = permissionResponse.data.managedProjectsCount > 0 || userProjects.length > 0
+        console.log('工时审核权限检查结果:', hasApprovalPermission.value)
+      } else {
+        // 如果获取项目列表失败，回退到只检查管理的项目
+        hasApprovalPermission.value = permissionResponse.data.managedProjectsCount > 0
+        console.log('获取项目列表失败，回退到只检查管理的项目:', hasApprovalPermission.value)
+      }
+    } else {
+      console.log('API返回错误代码:', permissionResponse.code)
+      hasApprovalPermission.value = false
+    }
+  } catch (error) {
+    console.error('检查工时审核权限失败:', error)
+    hasApprovalPermission.value = false
   }
 }
 
@@ -370,14 +420,16 @@ watch(
   (newToken) => {
     console.log('用户Token变化:', newToken)
     if (newToken) {
-      console.log('用户已登录，检查项目经理工作台权限')
+      console.log('用户已登录，检查权限')
       // 延迟一下，确保user信息已经更新
       setTimeout(() => {
         checkProjectManagerDashboardPermission()
+        checkApprovalPermission()
       }, 100)
     } else {
-      console.log('用户已登出，隐藏经理工作台')
+      console.log('用户已登出，隐藏工作台')
       showProjectManagerDashboard.value = false
+      hasApprovalPermission.value = false
     }
   },
   { deep: true, immediate: true }
@@ -389,8 +441,9 @@ watch(
   (newUser) => {
     console.log('用户信息变化:', newUser)
     if (newUser && userStore.token) {
-      console.log('用户信息已更新，检查项目经理工作台权限')
+      console.log('用户信息已更新，检查权限')
       checkProjectManagerDashboardPermission()
+      checkApprovalPermission()
     }
   },
   { deep: true, immediate: true }
@@ -400,9 +453,10 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
   handleResize() // 初始化检查
   
-  // 检查项目经理工作台权限
+  // 检查权限
   if (userStore.user) {
     checkProjectManagerDashboardPermission()
+    checkApprovalPermission()
   }
 })
 

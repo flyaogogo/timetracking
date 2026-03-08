@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.timetracking.entity.Task;
+import com.timetracking.entity.Project;
 import com.timetracking.mapper.TaskMapper;
 import com.timetracking.mapper.ProjectMapper;
 import com.timetracking.mapper.ProjectMemberMapper;
@@ -17,9 +18,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.math.BigDecimal;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.springframework.web.multipart.MultipartFile;
+import java.time.LocalDate;
 
 @Service
 public class TaskService extends ServiceImpl<TaskMapper, Task> {
@@ -36,66 +40,72 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
     @Autowired
     private ProjectStatusManagementService projectStatusManagementService;
     
-    public IPage<Task> getTaskList(int current, int size, Long projectId, String keyword) {
+    public IPage<Task> getTaskList(int current, int size, Long projectId, String keyword, Long parentId) {
         Page<Task> page = new Page<>(current, size);
         
         // 获取当前用户信息
         Long currentUserId = PermissionUtil.getCurrentUserId();
         boolean canViewAll = PermissionUtil.canViewAllProjects();
         
+        // 构建查询条件
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Task> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        if (projectId != null) {
+            wrapper.eq("project_id", projectId);
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.like("task_name", keyword).or().like("description", keyword);
+        }
+        if (parentId != null) {
+            wrapper.eq("parent_id", parentId);
+        }
+        // 移除默认只查询非子任务的限制，同时返回父子任务
+        
         if (canViewAll) {
             // 管理员可以查看所有任务
-            if (projectId != null) {
-                // 管理员查看指定项目的任务
-                return baseMapper.selectTasksByProjectAndKeyword(page, projectId, keyword);
-            } else if (keyword != null && !keyword.trim().isEmpty()) {
-                // 管理员按关键词搜索所有任务
-                return baseMapper.selectTasksWithDetailsAndKeyword(page, keyword);
-            } else {
-                // 管理员查看所有任务
-                return baseMapper.selectTasksWithDetails(page);
-            }
+            return page(page, wrapper);
         } else {
-            // 非管理员用户只能查看参与项目中分配给自己的任务
+            // 非管理员用户只能查看参与项目的任务
             if (projectId != null) {
                 // 检查项目访问权限
                 if (!hasProjectAccess(projectId)) {
                     return new Page<>(current, size); // 返回空页面
                 }
-                // 查看指定项目中分配给自己的任务
-                return baseMapper.selectUserRelatedTasksByProject(page, currentUserId, projectId, keyword);
-            } else {
-                // 查看所有参与项目中分配给自己的任务
-                return baseMapper.selectUserRelatedTasks(page, currentUserId, keyword);
             }
+            // 使用查询包装器查询，确保只返回用户有权限的任务
+            return baseMapper.selectUserRelatedTasksWithParentFilter(page, currentUserId, wrapper);
         }
     }
     
     /**
      * 根据用户权限获取任务列表
      */
-    public IPage<Task> getTaskListByPermission(int current, int size, Long projectId, String keyword, Long userId) {
+    public IPage<Task> getTaskListByPermission(int current, int size, Long projectId, String keyword, Long userId, Long parentId) {
         Page<Task> page = new Page<>(current, size);
         
         if (userId == null) {
             return page; // 返回空页面
         }
         
+        // 构建查询条件
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Task> wrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        if (projectId != null) {
+            wrapper.eq("project_id", projectId);
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.like("task_name", keyword).or().like("description", keyword);
+        }
+        if (parentId != null) {
+            wrapper.eq("parent_id", parentId);
+        }
+        // 移除默认只查询非子任务的限制，同时返回父子任务
+        
         // 管理员可以查看所有任务
         if (PermissionUtil.isAdmin()) {
-            if (projectId != null) {
-                return baseMapper.selectTasksByProjectAndKeyword(page, projectId, keyword);
-            } else {
-                return baseMapper.selectTasksWithDetailsAndKeyword(page, keyword);
-            }
+            return page(page, wrapper);
         }
         
         // 其他用户只能查看参与项目的任务
-        if (projectId != null) {
-            return baseMapper.selectUserRelatedTasksByProject(page, userId, projectId, keyword);
-        } else {
-            return baseMapper.selectUserRelatedTasks(page, userId, keyword);
-        }
+        return baseMapper.selectUserRelatedTasksWithParentFilter(page, userId, wrapper);
     }
     
     public Task getTaskWithDetails(Long id) {
@@ -138,7 +148,32 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
      * 创建任务
      */
     public Task createTask(Task task) {
+        // 检查父子任务关系
+        validateParentChildRelationship(task);
+        
+        // 如果是子任务，自动设置审核人为父任务执行人
+        if (task.getParentId() != null) {
+            Task parentTask = getById(task.getParentId());
+            if (parentTask != null) {
+                // 优先使用父任务的执行人为审核人
+                if (parentTask.getAssigneeId() != null) {
+                    task.setReviewerId(parentTask.getAssigneeId());
+                } else {
+                    // 如果父任务没有执行人，使用项目经理作为审核人
+                    Project project = projectMapper.selectById(parentTask.getProjectId());
+                    if (project != null && project.getManagerId() != null) {
+                        task.setReviewerId(project.getManagerId());
+                    }
+                }
+            }
+        }
+        
         save(task);
+        
+        // 如果是子任务，更新父任务的属性（结束时间和预估工时）
+        if (task.getParentId() != null) {
+            updateParentTaskProperties(task.getParentId());
+        }
         
         // 创建任务后，更新项目工时汇总
         if (task.getProjectId() != null) {
@@ -151,10 +186,96 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
     }
     
     /**
+     * 验证父子任务关系
+     */
+    private void validateParentChildRelationship(Task task) {
+        // 检查是否为子任务
+        if (task.getParentId() != null) {
+            // 检查父任务是否存在
+            Task parentTask = getById(task.getParentId());
+            if (parentTask == null) {
+                throw new IllegalArgumentException("父任务不存在");
+            }
+            
+            // 检查父任务是否也是子任务（子任务不能再建子任务）
+            if (parentTask.getParentId() != null) {
+                throw new IllegalArgumentException("子任务不能再创建子任务");
+            }
+            
+            // 检查父任务状态是否为已完成
+            if (Task.TaskStatus.COMPLETED.equals(parentTask.getStatus())) {
+                throw new IllegalArgumentException("状态已完成的任务不能添加子任务");
+            }
+            
+            // 检查子任务的开始时间是否晚于父任务的开始时间
+            if (task.getStartDate() != null && parentTask.getStartDate() != null) {
+                if (task.getStartDate().isBefore(parentTask.getStartDate())) {
+                    throw new IllegalArgumentException("子任务的开始时间必须晚于或等于父任务的开始时间");
+                }
+            }
+        }
+    }
+    
+    /**
+     * 更新父任务的结束时间为子任务的最长结束时间，预估时间为所有子任务的总和
+     */
+    public void updateParentTaskProperties(Long parentTaskId) {
+        if (parentTaskId == null) {
+            return;
+        }
+        
+        // 获取所有子任务
+        QueryWrapper<Task> wrapper = new QueryWrapper<>();
+        wrapper.eq("parent_id", parentTaskId);
+        List<Task> childTasks = list(wrapper);
+        
+        if (childTasks.isEmpty()) {
+            return;
+        }
+        
+        // 找出子任务中最大的结束时间
+        LocalDate maxEndDate = null;
+        // 计算所有子任务的预估工时总和
+        BigDecimal totalEstimatedHours = BigDecimal.ZERO;
+        
+        for (Task childTask : childTasks) {
+            // 计算最大结束时间
+            if (childTask.getEndDate() != null) {
+                if (maxEndDate == null || childTask.getEndDate().isAfter(maxEndDate)) {
+                    maxEndDate = childTask.getEndDate();
+                }
+            }
+            
+            // 累加预估工时
+            if (childTask.getEstimatedHours() != null) {
+                totalEstimatedHours = totalEstimatedHours.add(childTask.getEstimatedHours());
+            }
+        }
+        
+        // 更新父任务的属性
+        Task parentTask = getById(parentTaskId);
+        if (parentTask != null) {
+            if (maxEndDate != null) {
+                parentTask.setEndDate(maxEndDate);
+            }
+            parentTask.setEstimatedHours(totalEstimatedHours);
+            updateById(parentTask);
+        }
+    }
+    
+    /**
      * 更新任务
      */
     public Task updateTask(Task task) {
+        // 检查父子任务关系
+        validateParentChildRelationship(task);
+        
         updateById(task);
+        
+        // 如果是子任务，更新父任务的属性（结束时间和预估工时）
+        if (task.getParentId() != null) {
+            updateParentTaskProperties(task.getParentId());
+        }
         
         // 更新任务后，重新计算实际工时和进度
         if (task.getId() != null) {
@@ -175,10 +296,33 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
      */
     public void deleteTask(Long id) {
         Task task = getById(id);
+        if (task == null) {
+            return;
+        }
+        
+        // 检查是否有子任务
+        QueryWrapper<Task> childWrapper = new QueryWrapper<>();
+        childWrapper.eq("parent_id", id);
+        List<Task> childTasks = list(childWrapper);
+        
+        // 如果有子任务，先删除子任务
+        for (Task childTask : childTasks) {
+            removeById(childTask.getId());
+        }
+        
+        // 保存父任务ID，用于后续更新
+        Long parentTaskId = task.getParentId();
+        
+        // 删除任务
         removeById(id);
         
+        // 如果是子任务，更新父任务的结束时间
+        if (parentTaskId != null) {
+            updateParentTaskProperties(parentTaskId);
+        }
+        
         // 删除任务后，更新项目工时汇总
-        if (task != null && task.getProjectId() != null) {
+        if (task.getProjectId() != null) {
             statisticsService.updateProjectActualHours(task.getProjectId());
         }
     }
@@ -383,7 +527,27 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         }
         
         // 检查用户是否参与该任务所属的项目
-        return hasProjectAccess(task.getProjectId());
+        if (hasProjectAccess(task.getProjectId())) {
+            return true;
+        }
+        
+        // 检查用户是否是父任务的项目经理（父任务可以管理所有子任务）
+        if (task.getParentId() != null) {
+            Task parentTask = getById(task.getParentId());
+            if (parentTask != null) {
+                // 检查是否是项目经理
+                Project project = projectMapper.selectById(parentTask.getProjectId());
+                if (project != null && project.getManagerId() != null && project.getManagerId().equals(currentUserId)) {
+                    return true;
+                }
+                // 检查是否是父任务的负责人
+                if (parentTask.getAssigneeId() != null && parentTask.getAssigneeId().equals(currentUserId)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     /**

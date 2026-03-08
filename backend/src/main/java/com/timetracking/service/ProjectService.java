@@ -5,9 +5,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.timetracking.entity.Project;
+import com.timetracking.entity.ProjectMember;
 import com.timetracking.mapper.ProjectMapper;
 import com.timetracking.mapper.ProjectMemberMapper;
-import com.timetracking.service.ProjectStatusManagementService;
 import com.timetracking.util.PermissionUtil;
 import com.timetracking.util.EnhancedPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 
@@ -23,9 +24,6 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
     
     @Autowired
     private ProjectMemberMapper projectMemberMapper;
-    
-    @Autowired
-    private ProjectStatusManagementService projectStatusManagementService;
     
     public IPage<Project> getProjectList(int current, int size, String keyword) {
         return getProjectList(current, size, keyword, null);
@@ -182,9 +180,6 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
             System.err.println("Failed to add project manager to project members: " + e.getMessage());
         }
         
-        // 项目创建后，自动调整状态
-        projectStatusManagementService.autoAdjustProjectStatus(project.getId());
-        
         return project;
     }
     
@@ -246,13 +241,19 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
      * 检查用户是否为项目成员
      */
     public boolean isProjectMember(Long projectId, Long userId) {
+        System.out.println("isProjectMember: projectId=" + projectId + ", userId=" + userId);
         if (projectId == null || userId == null) {
+            System.out.println("isProjectMember: projectId or userId is null");
             return false;
         }
         
         try {
-            return projectMemberMapper.selectByProjectAndUser(projectId, userId) != null;
+            ProjectMember member = projectMemberMapper.selectByProjectAndUser(projectId, userId);
+            System.out.println("isProjectMember: member found=" + (member != null));
+            return member != null;
         } catch (Exception e) {
+            System.out.println("isProjectMember: error=" + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
@@ -285,5 +286,16 @@ public class ProjectService extends ServiceImpl<ProjectMapper, Project> {
         }
         
         return baseMapper.selectBatchIds(projectIds);
+    }
+    
+    /**
+     * 获取项目成员列表
+     */
+    public List<Map<String, Object>> getProjectMembers(Long projectId) {
+        if (projectId == null) {
+            return new ArrayList<>();
+        }
+        
+        return projectMemberMapper.selectProjectMembers(projectId);
     }
 }

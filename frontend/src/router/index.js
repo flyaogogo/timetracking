@@ -225,7 +225,7 @@ const routes = [
         component: () => import('@/views/Approvals.vue'),
         meta: { 
           title: '工时审核', 
-          roles: ['ADMIN', 'PROJECT_MANAGER', 'DEPARTMENT_MANAGER'] 
+          roles: ['ADMIN', 'PROJECT_MANAGER', 'DEPARTMENT_MANAGER', 'DEVELOPER', 'TESTER']
         }
       },
       {
@@ -404,7 +404,7 @@ router.beforeEach(async (to, from, next) => {
     const userRole = userStore.user?.role
     
     try {
-      const hasPermission = await hasProjectManagerDashboardPermission(userRole)
+      const hasPermission = await hasProjectManagerDashboardPermission()
       console.log('项目经理工作台权限检查结果:', hasPermission)
       
       if (hasPermission) {
@@ -444,7 +444,7 @@ router.beforeEach(async (to, from, next) => {
     if (to.meta.requiresProjectManagerPermission) {
       console.log('🔍 检查项目经理权限')
       try {
-        const hasProjectManagerPermission = await hasProjectManagerDashboardPermission(userRole)
+        const hasProjectManagerPermission = await hasProjectManagerDashboardPermission()
         console.log('项目经理权限检查结果:', hasProjectManagerPermission)
         
         if (hasBasicRole && hasProjectManagerPermission) {

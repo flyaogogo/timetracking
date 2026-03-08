@@ -53,24 +53,146 @@
         </div>
       </div>
       
+
+      
       <!-- 任务列表 -->
       <el-table
         v-loading="loading"
-        :data="tasks"
+        :data="processedTasks"
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        @expand-change="handleExpandChange"
+        row-key="id"
+        empty-text="暂无任务数据，请创建新任务或检查项目权限"
       >
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div v-loading="loadingChildTasks[row.id]" element-loading-text="加载子任务中..." style="min-height: 100px;">
+              <div v-if="getChildTasks(row.id).length > 0" class="child-tasks-list">
+                <div class="child-tasks-header">
+                  <div class="child-tasks-title">子任务列表</div>
+                  <div class="child-tasks-count"> - {{ getChildTasks(row.id).length }} 个子任务</div>
+                </div>
+                <el-table :data="getChildTasks(row.id)" style="width: 100%">
+                  <el-table-column prop="taskName" label="任务名称" width="180">
+                    <template #default="{ row }">
+                      <span class="child-task">{{ row.taskName }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="taskType" label="任务类型" width="100">
+                    <template #default="{ row }">
+                      <el-tag :type="getTaskTypeColor(row.taskType)" size="small" class="child-task">
+                        {{ getTaskTypeText(row.taskType) }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="priority" label="优先级" width="80">
+                    <template #default="{ row }">
+                      <el-rate
+                        v-model="row.priority"
+                        :max="5"
+                        disabled
+                        show-score
+                        text-color="#ff9900"
+                        score-template="{value}"
+                        size="small"
+                      />
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="assigneeName" label="执行人" width="100">
+                    <template #default="{ row }">
+                      <span class="child-task">{{ row.assigneeName }}</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="status" label="状态" width="100">
+                    <template #default="{ row }">
+                      <el-tag :type="getStatusColor(row.status)" class="child-task">
+                        {{ getStatusText(row.status) }}
+                      </el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="progress" label="进度" width="120">
+                    <template #default="{ row }">
+                      <el-progress :percentage="row.progress" stroke-width="6" />
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="estimatedHours" label="预估工时" width="120">
+                    <template #default="{ row }">
+                      <span class="child-task">
+                        {{ row.estimatedHours }}h / {{ Math.ceil(row.estimatedHours / 8) }}天
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="actualHours" label="实际工时" width="120">
+                    <template #default="{ row }">
+                      <span class="child-task">
+                        {{ row.actualHours || 0 }}h / {{ Math.ceil((row.actualHours || 0) / 8) }}天
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="100" fixed="right">
+                    <template #default="{ row }">
+                      <div>
+                        <el-dropdown @command="(command) => handleCommand(command, row)" v-if="canManageTask(row)">
+                          <el-button type="primary" size="small" text>
+                            操作
+                            <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                          </el-button>
+                          <template #dropdown>
+                            <el-dropdown-menu>
+                              <el-dropdown-item command="edit">
+                                <el-icon><Edit /></el-icon>
+                                编辑
+                              </el-dropdown-item>
+                              <el-dropdown-item command="progress">
+                                <el-icon><TrendCharts /></el-icon>
+                                进度
+                              </el-dropdown-item>
+                              <el-dropdown-item command="timeEntries">
+                                <el-icon><Timer /></el-icon>
+                                工时
+                              </el-dropdown-item>
+                              <el-dropdown-item command="delete" divided v-if="canDeleteTask(row)">
+                                <el-icon><Delete /></el-icon>
+                                删除
+                              </el-dropdown-item>
+                            </el-dropdown-menu>
+                          </template>
+                        </el-dropdown>
+                        <el-button v-else type="info" size="small" disabled>
+                          无权限
+                        </el-button>
+                      </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else class="no-child-tasks">
+                该任务暂无子任务
+              </div>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column type="selection" width="55" />
         
-        <el-table-column prop="taskName" label="任务名称" min-width="150">
+        <el-table-column prop="taskName" label="任务名称" width="180">
           <template #default="{ row }">
-            <el-link type="primary" @click="viewTask(row)">
-              {{ row.taskName }}
-            </el-link>
+            <div class="task-name-wrapper">
+              <el-link 
+                type="primary" 
+                @click="viewTask(row)"
+              >
+                {{ row.taskName }}
+              </el-link>
+            </div>
           </template>
         </el-table-column>
         
-        <el-table-column prop="projectName" label="所属项目" width="120" />
+        <el-table-column prop="projectName" label="所属项目" width="120">
+          <template #default="{ row }">
+            <span>{{ row.projectName }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="taskType" label="任务类型" width="100">
           <template #default="{ row }">
@@ -82,18 +204,24 @@
         
         <el-table-column prop="priority" label="优先级" width="80">
           <template #default="{ row }">
-            <el-rate
-              v-model="row.priority"
-              :max="5"
-              disabled
-              show-score
-              text-color="#ff9900"
-              score-template="{value}"
-            />
+            <div>
+              <el-rate
+                v-model="row.priority"
+                :max="5"
+                disabled
+                show-score
+                text-color="#ff9900"
+                score-template="{value}"
+              />
+            </div>
           </template>
         </el-table-column>
         
-        <el-table-column prop="assigneeName" label="执行人" width="100" />
+        <el-table-column prop="assigneeName" label="执行人" width="100">
+          <template #default="{ row }">
+            <span>{{ row.assigneeName }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
@@ -105,19 +233,25 @@
         
         <el-table-column prop="progress" label="进度" width="120">
           <template #default="{ row }">
-            <el-progress :percentage="row.progress" :stroke-width="8" />
+            <div>
+              <el-progress :percentage="row.progress" stroke-width="8" />
+            </div>
           </template>
         </el-table-column>
         
         <el-table-column prop="estimatedHours" label="预估工时" width="120">
           <template #default="{ row }">
-            {{ row.estimatedHours }}h / {{ Math.ceil(row.estimatedHours / 8) }}天
+            <span>
+              {{ row.estimatedHours }}h / {{ Math.ceil(row.estimatedHours / 8) }}天
+            </span>
           </template>
         </el-table-column>
         
         <el-table-column prop="actualHours" label="实际工时" width="120">
           <template #default="{ row }">
-            {{ row.actualHours || 0 }}h / {{ Math.ceil((row.actualHours || 0) / 8) }}天
+            <span>
+              {{ row.actualHours || 0 }}h / {{ Math.ceil((row.actualHours || 0) / 8) }}天
+            </span>
           </template>
         </el-table-column>
         
@@ -130,41 +264,56 @@
           </template>
         </el-table-column>
         
-        <el-table-column prop="startDate" label="开始日期" width="110" />
-        <el-table-column prop="endDate" label="结束日期" width="110" />
+        <el-table-column prop="startDate" label="开始日期" width="110">
+          <template #default="{ row }">
+            <span>{{ row.startDate }}</span>
+          </template>
+        </el-table-column>
+        
+        <el-table-column prop="endDate" label="结束日期" width="110">
+          <template #default="{ row }">
+            <span>{{ row.endDate }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-dropdown @command="(command) => handleCommand(command, row)" v-if="canManageTask(row)">
-              <el-button type="primary" size="small" text>
-                操作
-                <el-icon class="el-icon--right"><arrow-down /></el-icon>
+            <div>
+              <el-dropdown @command="(command) => handleCommand(command, row)" v-if="canManageTask(row)">
+                <el-button type="primary" size="small" text>
+                  操作
+                  <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="edit">
+                      <el-icon><Edit /></el-icon>
+                      编辑
+                    </el-dropdown-item>
+                    <el-dropdown-item command="addChild" v-if="row.status !== 'COMPLETED'">
+                      <el-icon><Plus /></el-icon>
+                      添加子任务
+                    </el-dropdown-item>
+                    <el-dropdown-item command="progress">
+                      <el-icon><TrendCharts /></el-icon>
+                      进度
+                    </el-dropdown-item>
+                    <el-dropdown-item command="timeEntries">
+                      <el-icon><Timer /></el-icon>
+                      工时
+                    </el-dropdown-item>
+                    <!-- 只有管理员和项目经理可以删除任务 -->
+                    <el-dropdown-item command="delete" divided v-if="canDeleteTask(row)">
+                      <el-icon><Delete /></el-icon>
+                      删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button v-else type="info" size="small" disabled>
+                无权限
               </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="edit">
-                    <el-icon><Edit /></el-icon>
-                    编辑
-                  </el-dropdown-item>
-                  <el-dropdown-item command="progress">
-                    <el-icon><TrendCharts /></el-icon>
-                    进度
-                  </el-dropdown-item>
-                  <el-dropdown-item command="timeEntries">
-                    <el-icon><Timer /></el-icon>
-                    工时
-                  </el-dropdown-item>
-                  <!-- 只有管理员和项目经理可以删除任务 -->
-                  <el-dropdown-item command="delete" divided v-if="canDeleteTask(row)">
-                    <el-icon><Delete /></el-icon>
-                    删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <el-button v-else type="info" size="small" disabled>
-              无权限
-            </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -196,6 +345,35 @@
         :rules="formRules"
         label-width="100px"
       >
+        <!-- 父任务显示在任务名前面 -->
+        <el-row :gutter="20" v-if="form.id || form.parentId">
+          <el-col :span="12">
+            <el-form-item label="父任务" prop="parentId">
+              <!-- 添加子任务时，仅显示父任务名称，不允许修改 -->
+              <template v-if="form.parentId && !form.id">
+                <el-input 
+                  :value="getParentTaskName(form.parentId)" 
+                  readonly 
+                  placeholder="父任务"
+                />
+              </template>
+              <!-- 编辑任务时，可以选择父任务 -->
+              <template v-else>
+                <el-select v-model="form.parentId" placeholder="选择父任务（可选）" filterable>
+                  <el-option label="无（顶级任务）" value="" />
+                  <el-option
+                    v-for="task in parentTasks"
+                    :key="task.id"
+                    :label="task.taskName"
+                    :value="task.id"
+                  />
+                </el-select>
+                <div class="field-hint">子任务不能再创建子任务</div>
+              </template>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
         <el-form-item label="任务名称" prop="taskName">
           <el-input v-model="form.taskName" placeholder="请输入任务名称" />
         </el-form-item>
@@ -212,7 +390,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="所属项目" prop="projectId">
-              <el-select v-model="form.projectId" placeholder="请选择项目">
+              <el-select v-model="form.projectId" placeholder="请选择项目" @change="loadParentTasks">
                 <el-option
                   v-for="project in projects"
                   :key="project.id"
@@ -237,6 +415,8 @@
             </el-form-item>
           </el-col>
         </el-row>
+        
+
         
         <el-row :gutter="20">
           <el-col :span="12">
@@ -269,12 +449,12 @@
           
           <el-col :span="12">
             <el-form-item label="执行人" prop="assigneeId">
-              <el-select v-model="form.assigneeId" placeholder="请选择执行人">
+              <el-select v-model="form.assigneeId" placeholder="请选择执行人" filterable>
                 <el-option
-                  v-for="user in users"
-                  :key="user.id"
-                  :label="user.realName"
-                  :value="user.id"
+                  v-for="member in projectMembers"
+                  :key="member.userId"
+                  :label="member.userRealName"
+                  :value="member.userId"
                 />
               </el-select>
             </el-form-item>
@@ -390,10 +570,10 @@
                 <el-form-item label="审核人" prop="reviewerId">
                   <el-select v-model="form.reviewerId" placeholder="请选择审核人">
                     <el-option
-                      v-for="user in users"
-                      :key="user.id"
-                      :label="user.realName"
-                      :value="user.id"
+                      v-for="member in projectMembers"
+                      :key="member.userId"
+                      :label="member.userRealName"
+                      :value="member.userId"
                     />
                   </el-select>
                   <div class="field-hint">负责任务质量审核的人员</div>
@@ -526,11 +706,11 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUserTasks, importTasks as importTasksApi, downloadTaskImportTemplate } from '@/api/task'
-import { getProjectList } from '@/api/project'
+import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUserTasks, importTasks as importTasksApi, downloadTaskImportTemplate, getTaskChildren } from '@/api/task'
+import { getProjectList, getProjectMembers } from '@/api/project'
 import { getUserList } from '@/api/user'
 import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
-import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown } from '@element-plus/icons-vue'
+import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -546,12 +726,26 @@ const searchProjectId = ref(null)
 const tasks = ref([])
 const projects = ref([])
 const users = ref([])
+const projectMembers = ref([])
+const parentTasks = ref([])
 const selectedTasks = ref([])
 const currentTaskId = ref(null)
 const currentProgress = ref(0)
 const currentStatus = ref('')
 const statusExplanationCollapse = ref([])
 const activeTaskCollapse = ref([]) // 任务表单折叠面板控制
+const childTasks = ref({}) // 存储子任务数据，键为父任务ID
+const loadingChildTasks = ref({}) // 存储子任务加载状态
+
+// 处理任务数据，只返回父任务
+const processedTasks = computed(() => {
+  if (!tasks.value || tasks.value.length === 0) return []
+  
+  // 只返回父任务
+  return tasks.value.filter(task => !task.parentId)
+})
+
+
 
 // Excel导入相关变量
 const importDialogVisible = ref(false)
@@ -605,6 +799,7 @@ const form = reactive({
   taskName: '',
   description: '',
   projectId: null,
+  parentId: null,
   taskType: 'DEVELOPMENT',
   priority: 3,
   difficulty: 3,
@@ -639,45 +834,119 @@ const formRules = {
 
 // 加载任务列表
 const loadTasks = async () => {
+  console.log('================== loadTasks函数被调用 ==================')
+  console.log('当前时间:', new Date().toISOString())
   loading.value = true
   try {
+    // 检查用户是否已登录
+    console.log('当前用户:', userStore.user)
+    console.log('当前token:', userStore.token)
+    console.log('userStore.user?.id:', userStore.user?.id)
+    if (!userStore.token || !userStore.user || !userStore.user.id) {
+      console.log('用户未登录或token不存在')
+      ElMessage.warning('请先登录')
+      tasks.value = []
+      pagination.total = 0
+      console.log('loadTasks函数提前返回 - 用户未登录')
+      return
+    }
+    console.log('用户已登录，继续加载任务列表')
+    
     // 所有用户都能看到自己参与项目中的所有任务
     // 1. 检查URL参数
     const userOnlyFromUrl = route.query.userOnly === 'true'
+    console.log('是否只看自己的任务:', userOnlyFromUrl)
     
     let response
-    if (userOnlyFromUrl && userStore.user?.id) {
-      // 仅在URL参数指定时，才只看自己的任务
-      response = await getUserTasks(userStore.user.id, {
-        current: pagination.current,
-        size: pagination.size,
-        projectId: searchProjectId.value,
-        keyword: searchKeyword.value
-      })
-    } else {
-      // 调用普通任务列表API，显示自己参与项目中的所有任务
-      // 由于getProjectList已经只返回当前用户参与的项目，所以这里不需要额外的权限检查
-      response = await getTaskList({
-        current: pagination.current,
-        size: pagination.size,
-        projectId: searchProjectId.value,
-        keyword: searchKeyword.value
-      })
+    try {
+      if (userOnlyFromUrl) {
+        // 仅在URL参数指定时，才只看自己的任务
+        console.log('调用getUserTasks API...')
+        response = await getUserTasks(userStore.user.id, {
+          current: pagination.current,
+          size: pagination.size,
+          projectId: searchProjectId.value,
+          keyword: searchKeyword.value
+        })
+        console.log('getUserTasks API返回:', response)
+      } else {
+        // 调用普通任务列表API，显示自己参与项目中的所有任务
+        console.log('调用getTaskList API...')
+        response = await getTaskList({
+          current: pagination.current,
+          size: pagination.size,
+          projectId: searchProjectId.value,
+          keyword: searchKeyword.value
+        })
+        console.log('getTaskList API返回:', response)
+      }
+    } catch (apiError) {
+      console.log('API调用失败:', apiError)
+      ElMessage.error('API调用失败，请检查网络连接')
+      tasks.value = []
+      pagination.total = 0
+      loading.value = false
+      return
     }
     
-    if (response.code === 200) {
-      tasks.value = response.data.records || []
-      pagination.total = response.data.total || 0
+    // 检查响应结构
+    console.log('检查响应结构:', response)
+    if (response) {
+      // 处理任务数据
+      console.log('响应成功，处理任务数据')
+      console.log('loadTastk async:', response)
+      
+      // 检查response的结构，确保正确获取records和total
+      let records = []
+      let total = 0
+      
+      if (response.records) {
+        // 直接从response获取records和total
+        records = response.records || []
+        total = response.total || 0
+        console.log('从response直接获取数据:', { records, total })
+      } else if (response.data && response.data.records) {
+        // 从response.data获取records和total
+        records = response.data.records || []
+        total = response.data.total || 0
+        console.log('从response.data获取数据:', { records, total })
+      } else {
+        // 其他情况
+        console.log('响应数据结构不符合预期:', response)
+      }
+      
+      console.log('处理后的数据:', {
+        records: records,
+        total: total,
+        recordsLength: records.length
+      })
+      
+      // 使用展开运算符创建新数组，确保Vue响应式系统检测到变化
+      tasks.value = [...records]
+      pagination.total = total
+      console.log('tasks.value:', tasks.value)
+      console.log('tasks.value.length:', tasks.value.length)
+      console.log('pagination.total:', pagination.total)
     } else {
-      ElMessage.error(response.message || '加载任务列表失败')
+      console.log('响应失败:', response)
+      ElMessage.error('加载任务列表失败')
+      tasks.value = []
+      pagination.total = 0
     }
   } catch (error) {
-    console.error('加载任务列表失败:', error)
+    console.log('加载任务列表失败:', error)
     ElMessage.error('加载任务列表失败')
+    tasks.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
+    console.log('加载任务列表完成，当前tasks:', tasks.value)
   }
 }
+
+
+
+
 
 // 加载项目列表 - 只加载当前用户参与的项目
 const loadProjects = async () => {
@@ -705,7 +974,7 @@ const loadUsers = async () => {
     })
     
     if (response.code === 200) {
-      users.value = response.data.records || []
+      users.value = response.records || []
     }
   } catch (error) {
     console.error('加载用户列表失败:', error)
@@ -767,11 +1036,13 @@ const handleEstimatedHoursChange = (value) => {
 }
 
 // 显示新建对话框
-const showCreateDialog = () => {
+const showCreateDialog = async () => {
   dialogTitle.value = '新建任务'
   // 如果当前有选择的项目，自动填写到表单中
   if (searchProjectId.value) {
     form.projectId = searchProjectId.value
+    // 加载项目成员数据
+    await loadParentTasks()
   }
   
   // 设置执行人为当前登录用户
@@ -806,12 +1077,42 @@ const editTask = (row) => {
     calculatedDays.value = 0
   }
   
+  // 加载父任务列表
+  if (row.projectId) {
+    loadParentTasks()
+  }
+  
   dialogVisible.value = true
 }
 
 // 查看任务详情
 const viewTask = (row) => {
   console.log('查看任务:', row)
+}
+
+// 加载子任务
+const loadChildTasks = async (parentId) => {
+  if (loadingChildTasks.value[parentId]) return
+  
+  loadingChildTasks.value[parentId] = true
+  try {
+    const response = await getTaskChildren(parentId)
+    if (response.code === 200) {
+      childTasks.value[parentId] = response.data
+    } else {
+      childTasks.value[parentId] = []
+    }
+  } catch (error) {
+    console.error('加载子任务失败:', error)
+    childTasks.value[parentId] = []
+  } finally {
+    loadingChildTasks.value[parentId] = false
+  }
+}
+
+// 获取子任务列表
+const getChildTasks = (parentId) => {
+  return childTasks.value[parentId] || []
 }
 
 // 更新进度
@@ -874,6 +1175,15 @@ const deleteTask = async (row) => {
 const submitForm = async () => {
   if (!formRef.value) return
   
+  // 检查子任务名称是否重复
+  if (!form.id && form.parentId) {
+    const isDuplicate = await checkTaskNameDuplicate(form.taskName, form.parentId)
+    if (isDuplicate) {
+      ElMessage.error('子任务名称已存在，请使用其他名称')
+      return
+    }
+  }
+  
   await formRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
@@ -884,7 +1194,45 @@ const submitForm = async () => {
           
         if (response.code === 200) {
           ElMessage.success(form.id ? '更新成功' : '创建成功')
-          dialogVisible.value = false
+          
+          // 如果是添加子任务，不关闭对话框，只清空任务名称和其他可编辑字段
+          if (!form.id && form.parentId) {
+            // 保留父任务信息，清空其他字段
+            const parentId = form.parentId
+            const projectId = form.projectId
+            
+            // 清空可编辑字段
+            form.taskName = ''
+            form.description = ''
+            form.taskType = 'DEVELOPMENT'
+            form.priority = 3
+            form.difficulty = 3
+            form.estimatedHours = 0
+            form.assigneeId = userStore.user?.id || null
+            form.startDate = ''
+            form.endDate = ''
+            form.businessValue = 3
+            form.taskComplexity = 'MEDIUM'
+            form.storyPoints = 0
+            form.technicalRisk = 'MEDIUM'
+            form.baselineHours = 0
+            form.qualityScore = 85
+            form.acceptanceCriteria = ''
+            
+            // 重置日期范围相关变量
+            dateRange.value = []
+            daysBetween.value = 0
+            estimatedHours.value = 0
+            calculatedDays.value = 0
+            
+            // 保留父任务和项目信息
+            form.parentId = parentId
+            form.projectId = projectId
+          } else {
+            // 其他情况关闭对话框
+            dialogVisible.value = false
+          }
+          
           loadTasks()
         } else {
           ElMessage.error(response.message || '操作失败')
@@ -915,6 +1263,7 @@ const resetForm = () => {
     taskName: '',
     description: '',
     projectId: null,
+    parentId: null,
     taskType: 'DEVELOPMENT',
     priority: 3,
     difficulty: 3,
@@ -932,6 +1281,87 @@ const resetForm = () => {
     qualityTarget: 85,
     acceptanceCriteria: ''
   })
+  
+  // 重置父任务列表
+  parentTasks.value = []
+}
+
+// 加载项目成员列表
+const loadProjectMembers = async (projectId) => {
+  if (!projectId) {
+    projectMembers.value = []
+    return
+  }
+  
+  try {
+    const response = await getProjectMembers(projectId)
+    
+    if (response.code === 200) {
+      // 转换成员数据格式，确保userId和userRealName字段正确
+      projectMembers.value = (response.data || []).map(member => ({
+        userId: member.userId,
+        userRealName: member.userRealName || member.userName,
+        userRole: member.userRole,
+        username: member.username,
+        email: member.email,
+        department: member.department,
+        position: member.position
+      }))
+    }
+  } catch (error) {
+    console.error('加载项目成员失败:', error)
+    projectMembers.value = []
+  }
+}
+
+// 加载父任务列表
+const loadParentTasks = async () => {
+  if (!form.projectId) {
+    parentTasks.value = []
+    projectMembers.value = []
+    return
+  }
+  
+  try {
+    console.log('加载项目成员:', form.projectId)
+    // 同时加载父任务和项目成员
+    const [taskResponse, memberResponse] = await Promise.all([
+      getTaskList({
+        projectId: form.projectId,
+        current: 1,
+        size: 100
+      }),
+      getProjectMembers(form.projectId)
+    ])
+    
+    console.log('项目成员响应:', memberResponse)
+    // 处理父任务数据
+    if (taskResponse.code === 200) {
+      // 只显示顶级任务（没有父任务的任务）作为父任务选项
+      parentTasks.value = (taskResponse.records || []).filter(task => !task.parentId)
+    }
+    
+    // 处理项目成员数据
+            if (memberResponse.code === 200) {
+              // 转换成员数据格式，确保userId和userRealName字段正确
+              projectMembers.value = (memberResponse.data || []).map(member => ({
+                userId: member.userId,
+                userRealName: member.userRealName || member.userName,
+                userRole: member.userRole,
+                username: member.username,
+                email: member.email,
+                department: member.department,
+                position: member.position
+              }))
+              console.log('项目成员数据:', projectMembers.value)
+            } else {
+              console.error('获取项目成员失败:', memberResponse.message)
+            }
+  } catch (error) {
+    console.error('加载父任务和项目成员失败:', error)
+    parentTasks.value = []
+    projectMembers.value = []
+  }
 }
 
 // 选择变化
@@ -939,11 +1369,22 @@ const handleSelectionChange = (selection) => {
   selectedTasks.value = selection
 }
 
+// 处理展开/收起事件
+const handleExpandChange = (row, expandedRows) => {
+  if (expandedRows.includes(row)) {
+    // 当行被展开时，加载子任务
+    loadChildTasks(row.id)
+  }
+}
+
 // 处理操作命令
 const handleCommand = (command, row) => {
   switch (command) {
     case 'edit':
       editTask(row)
+      break
+    case 'addChild':
+      addChildTask(row)
       break
     case 'progress':
       updateProgress(row)
@@ -955,6 +1396,29 @@ const handleCommand = (command, row) => {
       deleteTask(row)
       break
   }
+}
+
+// 添加子任务
+const addChildTask = (parentTask) => {
+  dialogTitle.value = '添加子任务'
+  resetForm()
+  
+  // 设置父任务和项目信息
+  form.projectId = parentTask.projectId
+  form.parentId = parentTask.id
+  
+  // 设置审核人为父任务执行人
+  if (parentTask.assigneeId) {
+    form.reviewerId = parentTask.assigneeId
+  }
+  
+  // 展开质量与依赖关系部分
+  activeTaskCollapse.value = ['quality']
+  
+  // 加载父任务列表（虽然是添加子任务，但需要确保项目信息正确）
+  loadParentTasks()
+  
+  dialogVisible.value = true
 }
 
 // 获取任务类型颜色
@@ -1009,6 +1473,41 @@ const getStatusText = (status) => {
     'CANCELLED': '已取消'
   }
   return textMap[status] || status
+}
+
+// 根据父任务ID获取父任务名称
+const getParentTaskName = (parentId) => {
+  if (!parentId) return ''
+  const parentTask = parentTasks.value.find(task => task.id === parentId)
+  return parentTask ? parentTask.taskName : ''
+}
+
+
+
+// 检查子任务名称是否重复
+const checkTaskNameDuplicate = async (taskName, parentId) => {
+  if (!taskName || !parentId) return false
+  
+  try {
+    // 加载任务列表，检查是否存在相同名称的子任务
+    const response = await getTaskList({
+      projectId: form.projectId,
+      current: 1,
+      size: 100
+    })
+    
+    if (response.code === 200) {
+      // 检查是否存在同一父任务下名称相同的子任务
+      return response.records.some(task => 
+        task.parentId === parentId && 
+        task.taskName === taskName
+      )
+    }
+    return false
+  } catch (error) {
+    console.error('检查任务名称重复失败:', error)
+    return false
+  }
 }
 
 // Excel导入相关方法
@@ -1087,6 +1586,10 @@ const downloadTemplate = async () => {
 }
 
 onMounted(() => {
+  // 确保用户信息已初始化
+  userStore.initUser()
+  console.log('用户信息初始化后:', userStore.user)
+  
   // 如果URL中有projectId参数，设置默认项目
   if (route.query.projectId) {
     searchProjectId.value = parseInt(route.query.projectId)
@@ -1194,4 +1697,144 @@ onMounted(() => {
 .status-tip .el-icon {
   margin-right: 6px;
 }
+
+/* 任务名称样式 */
+.task-name-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.task-name-wrapper .el-link {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 父任务标签样式 */
+.parent-task-label {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 子任务样式 */
+.child-task {
+  font-size: 13px;
+  color: #606266;
+  margin-left: 20px;
+}
+
+/* 子任务标签样式 */
+.child-task.el-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* 子任务进度条样式 */
+.child-task .el-progress {
+  font-size: 11px;
+}
+
+/* 表格行样式 */
+.el-table__row {
+  transition: all 0.3s ease;
+  background-color: #f0f9ff;
+}
+
+/* 无内容提示样式 */
+.no-child-tasks {
+  padding: 20px;
+  text-align: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+/* 子任务列表样式 */
+.child-tasks-list {
+  margin-top: 10px;
+  margin-left: 30px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #fafafa;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  max-width: calc(100% - 30px);
+}
+
+/* 子任务名称样式 */
+.child-task {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 子任务列表头部 */
+.child-tasks-header {
+  padding: 10px 15px;
+  background-color: #f0f9ff;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.child-tasks-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: #303133;
+}
+
+.child-tasks-count {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 确保子表格样式正确 */
+.child-tasks-list .el-table {
+  margin-bottom: 0;
+  border: none;
+}
+
+.child-tasks-list .el-table__header-wrapper {
+  background-color: #f8f9fa;
+}
+
+.child-tasks-list .el-table__row {
+  background-color: #ffffff;
+}
+
+.child-tasks-list .el-table__row:hover {
+  background-color: #f5f7fa;
+}
+
+/* 子表格单元格样式 */
+.child-tasks-list .el-table__cell {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* 子表格表头样式 */
+.child-tasks-list .el-table__header th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #f8f9fa;
+  color: #606266;
+}
+
+/* 确保子表格边框样式正确 */
+.child-tasks-list .el-table--border {
+  border: none;
+}
+
+.child-tasks-list .el-table--border th,
+.child-tasks-list .el-table--border td {
+  border-right: 1px solid #ebeef5;
+}
+
+.child-tasks-list .el-table--border tr {
+  border-bottom: 1px solid #ebeef5;
+}
+
 </style>

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/projects")
@@ -163,21 +164,60 @@ public class ProjectController {
     }
     
     /**
+     * 获取项目成员列表
+     */
+    @GetMapping("/{id}/members")
+    public Result getProjectMembers(@PathVariable Long id) {
+        try {
+            Long currentUserId = PermissionUtil.getCurrentUserId();
+            System.out.println("getProjectMembers: currentUserId=" + currentUserId + ", projectId=" + id);
+            
+            // 检查项目访问权限
+            boolean canAccess = canAccessProject(currentUserId, id);
+            System.out.println("getProjectMembers: canAccess=" + canAccess);
+            
+            if (!canAccess) {
+                System.out.println("getProjectMembers: user has no access to project " + id);
+                return Result.error("无权限访问该项目");
+            }
+            
+            List<Map<String, Object>> members = projectService.getProjectMembers(id);
+            System.out.println("getProjectMembers: found " + (members != null ? members.size() : 0) + " members");
+            return Result.success("获取项目成员成功", members);
+        } catch (Exception e) {
+            System.out.println("getProjectMembers: error=" + e.getMessage());
+            e.printStackTrace();
+            return Result.error("获取项目成员失败: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 检查用户是否可以访问项目
      */
     private boolean canAccessProject(Long userId, Long projectId) {
+        System.out.println("canAccessProject: userId=" + userId + ", projectId=" + projectId);
+        
         if (userId == null || projectId == null) {
+            System.out.println("canAccessProject: userId or projectId is null");
             return false;
         }
         
         // 管理员可以访问所有项目
-        if (PermissionUtil.isAdmin()) {
+        boolean isAdmin = PermissionUtil.isAdmin();
+        System.out.println("canAccessProject: isAdmin=" + isAdmin);
+        if (isAdmin) {
             return true;
         }
         
-        // 检查是否为项目成员或项目经理
-        return projectService.isProjectMember(projectId, userId) ||
-               EnhancedPermissionUtil.isProjectManager(userId, projectId);
+        // 检查是否为项目成员
+        boolean isMember = projectService.isProjectMember(projectId, userId);
+        System.out.println("canAccessProject: isMember=" + isMember);
+        
+        // 检查是否为项目经理
+        boolean isProjectManager = EnhancedPermissionUtil.isProjectManager(userId, projectId);
+        System.out.println("canAccessProject: isProjectManager=" + isProjectManager);
+        
+        return isMember || isProjectManager;
     }
     
     /**

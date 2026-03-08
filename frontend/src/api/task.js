@@ -15,11 +15,18 @@ export const getTaskById = (id) => {
   })
 }
 
-export const getMyTasks = (params) => {
+export const getUserTasks = (userId, params) => {
   return request({
-    url: '/tasks/my',
+    url: `/tasks/user/${userId}`,
     method: 'get',
     params
+  })
+}
+
+export const getTaskChildren = (id) => {
+  return request({
+    url: `/tasks/${id}/children`,
+    method: 'get'
   })
 }
 
@@ -43,14 +50,6 @@ export const deleteTask = (id) => {
   return request({
     url: `/tasks/${id}`,
     method: 'delete'
-  })
-}
-
-export const getUserTasks = (userId, params) => {
-  return request({
-    url: `/tasks/user/${userId}`,
-    method: 'get',
-    params
   })
 }
 

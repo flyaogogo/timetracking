@@ -53,12 +53,14 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
             wrapper.eq("project_id", projectId);
         }
         if (keyword != null && !keyword.trim().isEmpty()) {
-            wrapper.like("task_name", keyword).or().like("description", keyword);
+            wrapper.and(w -> w.like("t.task_name", keyword).or().like("t.description", keyword));
         }
         if (parentId != null) {
             wrapper.eq("parent_id", parentId);
+        } else {
+            // 默认只查询父任务
+            wrapper.isNull("parent_id");
         }
-        // 移除默认只查询非子任务的限制，同时返回父子任务
         
         if (canViewAll) {
             // 管理员可以查看所有任务
@@ -92,12 +94,14 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
             wrapper.eq("project_id", projectId);
         }
         if (keyword != null && !keyword.trim().isEmpty()) {
-            wrapper.like("task_name", keyword).or().like("description", keyword);
+            wrapper.and(w -> w.like("t.task_name", keyword).or().like("t.description", keyword));
         }
         if (parentId != null) {
             wrapper.eq("parent_id", parentId);
+        } else {
+            // 默认只查询父任务
+            wrapper.isNull("parent_id");
         }
-        // 移除默认只查询非子任务的限制，同时返回父子任务
         
         // 管理员可以查看所有任务
         if (PermissionUtil.isAdmin()) {
@@ -548,6 +552,13 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         }
         
         return false;
+    }
+    
+    /**
+     * 获取带有详细信息的子任务列表
+     */
+    public java.util.List<Task> getChildTasksWithDetails(Long parentId) {
+        return baseMapper.selectChildTasksWithDetails(parentId);
     }
     
     /**

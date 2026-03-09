@@ -68,12 +68,12 @@
         <el-table-column type="expand">
           <template #default="{ row }">
             <div v-loading="loadingChildTasks[row.id]" element-loading-text="加载子任务中..." style="min-height: 100px;">
-              <div v-if="getChildTasks(row.id).length > 0" class="child-tasks-list">
+              <div class="child-tasks-list">
                 <div class="child-tasks-header">
                   <div class="child-tasks-title">子任务列表</div>
-                  <div class="child-tasks-count"> - {{ getChildTasks(row.id).length }} 个子任务</div>
+                  <div class="child-tasks-count">{{ getChildTasks(row.id).length }} 个子任务</div>
                 </div>
-                <el-table :data="getChildTasks(row.id)" style="width: 100%">
+                <el-table v-if="getChildTasks(row.id).length > 0" :data="getChildTasks(row.id)" style="width: 100%">
                   <el-table-column prop="taskName" label="任务名称" width="180">
                     <template #default="{ row }">
                       <span class="child-task">{{ row.taskName }}</span>
@@ -99,7 +99,7 @@
                       />
                     </template>
                   </el-table-column>
-                  <el-table-column prop="assigneeName" label="执行人" width="100">
+                  <el-table-column prop="assigneeName" label="执行人" width="120">
                     <template #default="{ row }">
                       <span class="child-task">{{ row.assigneeName }}</span>
                     </template>
@@ -166,9 +166,9 @@
                     </template>
                   </el-table-column>
                 </el-table>
-              </div>
-              <div v-else class="no-child-tasks">
-                该任务暂无子任务
+                <div v-else class="no-child-tasks">
+                  该任务暂无子任务
+                </div>
               </div>
             </div>
           </template>
@@ -742,7 +742,9 @@ const processedTasks = computed(() => {
   if (!tasks.value || tasks.value.length === 0) return []
   
   // 只返回父任务
-  return tasks.value.filter(task => !task.parentId)
+  const parentTasks = tasks.value.filter(task => !task.parentId)
+  console.log('父任务数量:', parentTasks.length)
+  return parentTasks
 })
 
 
@@ -1757,7 +1759,8 @@ onMounted(() => {
   overflow: hidden;
   background-color: #fafafa;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  max-width: calc(100% - 30px);
+  width: calc(100% - 30px);
+  min-width: 600px;
 }
 
 /* 子任务名称样式 */
@@ -1775,8 +1778,12 @@ onMounted(() => {
   background-color: #f0f9ff;
   border-bottom: 1px solid #e4e7ed;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+}
+
+.child-tasks-count {
+  margin-left: 15px;
 }
 
 .child-tasks-title {

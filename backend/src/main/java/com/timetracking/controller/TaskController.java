@@ -308,8 +308,8 @@ public class TaskController {
                 return Result.error("无权限访问该任务");
             }
             
-            // 获取子任务列表
-            List<Task> children = taskService.list(new QueryWrapper<Task>().eq("parent_id", id));
+            // 获取带有关联字段的子任务列表
+            java.util.List<Task> children = taskService.getChildTasksWithDetails(id);
             return Result.success("获取子任务成功", children);
         } catch (Exception e) {
             return Result.error("获取子任务失败: " + e.getMessage());

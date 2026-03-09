@@ -120,4 +120,26 @@ public interface TaskMapper extends BaseMapper<Task> {
             "  WHERE pm.user_id = #{managerId} AND pm.is_project_manager = 1" +
             ")")
     java.util.Map<String, Object> selectProjectManagerTaskStats(@Param("managerId") Long managerId);
+    
+    /**
+     * 获取带有详细信息的子任务列表
+     */
+    @Select("SELECT t.*, p.project_name, " +
+            "u1.real_name as assignee_name, " +
+            "u2.real_name as reviewer_name, " +
+            "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
+            "CASE WHEN t.end_date < CURDATE() AND t.status != 'COMPLETED' " +
+            "THEN DATEDIFF(CURDATE(), t.end_date) ELSE 0 END as delay_days " +
+            "FROM tasks t " +
+            "LEFT JOIN projects p ON t.project_id = p.id " +
+            "LEFT JOIN users u1 ON t.assignee_id = u1.id " +
+            "LEFT JOIN users u2 ON t.reviewer_id = u2.id " +
+            "LEFT JOIN (" +
+            "  SELECT te.task_id, SUM(te.duration) as actual_hours " +
+            "  FROM time_entries te " +
+            "  WHERE te.status = 'APPROVED' " +
+            "  GROUP BY te.task_id" +
+            ") te_stats ON t.id = te_stats.task_id " +
+            "WHERE t.parent_id = #{parentId}")
+    java.util.List<Task> selectChildTasksWithDetails(@Param("parentId") Long parentId);
 }

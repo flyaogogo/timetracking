@@ -72,6 +72,9 @@ public class Task {
     private String projectName;
     
     @TableField(exist = false)
+    private Long projectManagerId;
+    
+    @TableField(exist = false)
     private String assigneeName;
     
     @TableField(exist = false)

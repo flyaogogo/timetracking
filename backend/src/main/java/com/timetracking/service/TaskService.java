@@ -105,7 +105,8 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 管理员可以查看所有任务
         if (PermissionUtil.isAdmin()) {
-            return page(page, wrapper);
+            // 使用自定义查询，确保返回project_manager_id字段
+            return baseMapper.selectTasksWithDetailsAndKeyword(page, keyword);
         }
         
         // 其他用户只能查看参与项目的任务
@@ -513,7 +514,18 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
             return false;
         }
         
-        return projectMapper.isUserInProject(currentUserId, projectId) > 0;
+        // 检查用户是否是项目成员
+        if (projectMapper.isUserInProject(currentUserId, projectId) > 0) {
+            return true;
+        }
+        
+        // 检查用户是否是项目的manager_id
+        Long managerId = projectMapper.getProjectManagerId(projectId);
+        if (managerId != null && managerId.equals(currentUserId)) {
+            return true;
+        }
+        
+        return false;
     }
     
     /**

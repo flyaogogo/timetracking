@@ -709,6 +709,7 @@ import { useUserStore } from '@/stores/user'
 import { getTaskList, createTask, updateTask, deleteTask as deleteTaskApi, getUserTasks, importTasks as importTasksApi, downloadTaskImportTemplate, getTaskChildren } from '@/api/task'
 import { getProjectList, getProjectMembers } from '@/api/project'
 import { getUserList } from '@/api/user'
+import { getUserProjectRoles } from '@/api/projectMember'
 import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
 import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 
@@ -736,6 +737,7 @@ const statusExplanationCollapse = ref([])
 const activeTaskCollapse = ref([]) // 任务表单折叠面板控制
 const childTasks = ref({}) // 存储子任务数据，键为父任务ID
 const loadingChildTasks = ref({}) // 存储子任务加载状态
+const userProjectRoles = ref({}) // 存储用户在项目中的角色信息
 
 // 处理任务数据，只返回父任务
 const processedTasks = computed(() => {
@@ -759,9 +761,16 @@ const importLoading = ref(false)
 // 权限相关
 const canManageCurrentProjectTasks = computed(() => {
   if (!searchProjectId.value) return false
-  if (userStore.user?.role === 'ADMIN' || userStore.user?.role === 'PROJECT_MANAGER') return true
-  // 这里可以添加更复杂的项目级权限检查
-  return true // 临时允许所有用户，实际应该检查项目权限
+  if (userStore.user?.role === 'ADMIN') return true
+  
+  // 检查用户是否是当前项目的项目经理（通过projectManagerId字段）
+  const currentProject = projects.value.find(p => p.id === searchProjectId.value)
+  if (currentProject && currentProject.managerId && currentProject.managerId === userStore.user?.id) return true
+  
+  // 检查用户是否在project_members表中被设置为当前项目的项目经理
+  if (userProjectRoles.value[searchProjectId.value] && userProjectRoles.value[searchProjectId.value].displayRole === 'MANAGER') return true
+  
+  return false
 })
 
 // 检查是否可以管理特定任务（编辑、更新进度等）
@@ -769,8 +778,11 @@ const canManageTask = (task) => {
   // 管理员可以管理所有任务
   if (userStore.user?.role === 'ADMIN') return true
   
-  // 项目经理可以管理项目内的所有任务
-  if (userStore.user?.role === 'PROJECT_MANAGER') return true
+  // 检查用户是否是项目的管理员（通过projectManagerId字段）
+  if (task.projectManagerId && task.projectManagerId === userStore.user?.id) return true
+  
+  // 检查用户是否在project_members表中被设置为项目经理
+  if (task.projectId && userProjectRoles.value[task.projectId] && userProjectRoles.value[task.projectId].displayRole === 'MANAGER') return true
   
   // 任务执行人可以更新进度
   if (task.assigneeId === userStore.user?.id) return true
@@ -780,8 +792,16 @@ const canManageTask = (task) => {
 
 // 检查是否可以删除任务
 const canDeleteTask = (task) => {
-  // 只有管理员和项目经理可以删除任务
-  return userStore.user?.role === 'ADMIN' || userStore.user?.role === 'PROJECT_MANAGER'
+  // 管理员可以删除所有任务
+  if (userStore.user?.role === 'ADMIN') return true
+  
+  // 检查用户是否是项目的管理员（通过projectManagerId字段）
+  if (task.projectManagerId && task.projectManagerId === userStore.user?.id) return true
+  
+  // 检查用户是否在project_members表中被设置为项目经理
+  if (task.projectId && userProjectRoles.value[task.projectId] && userProjectRoles.value[task.projectId].displayRole === 'MANAGER') return true
+  
+  return false
 }
 
 const pagination = reactive({
@@ -923,6 +943,11 @@ const loadTasks = async () => {
         recordsLength: records.length
       })
       
+      // 打印第一个任务对象的结构，查看是否包含项目的manager_id信息
+      if (records.length > 0) {
+        console.log('第一个任务对象结构:', records[0])
+      }
+      
       // 使用展开运算符创建新数组，确保Vue响应式系统检测到变化
       tasks.value = [...records]
       pagination.total = total
@@ -980,6 +1005,29 @@ const loadUsers = async () => {
     }
   } catch (error) {
     console.error('加载用户列表失败:', error)
+  }
+}
+
+// 加载用户项目角色信息
+const loadUserProjectRoles = async () => {
+  try {
+    if (!userStore.user?.id) return
+    
+    const response = await getUserProjectRoles(userStore.user.id)
+    if (response.code === 200) {
+      const roles = response.data || []
+      // 将角色信息转换为以projectId为键的对象
+      const rolesMap = {}
+      roles.forEach(role => {
+        if (role.projectId) {
+          rolesMap[role.projectId] = role
+        }
+      })
+      userProjectRoles.value = rolesMap
+      console.log('用户项目角色信息:', userProjectRoles.value)
+    }
+  } catch (error) {
+    console.error('加载用户项目角色信息失败:', error)
   }
 }
 
@@ -1587,7 +1635,7 @@ const downloadTemplate = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 确保用户信息已初始化
   userStore.initUser()
   console.log('用户信息初始化后:', userStore.user)
@@ -1597,9 +1645,11 @@ onMounted(() => {
     searchProjectId.value = parseInt(route.query.projectId)
   }
   
-  loadTasks()
-  loadProjects()
-  loadUsers()
+  // 加载项目列表、用户列表和用户项目角色信息
+  await loadProjects()
+  await loadUsers()
+  await loadUserProjectRoles()
+  await loadTasks()
 })
 </script>
 

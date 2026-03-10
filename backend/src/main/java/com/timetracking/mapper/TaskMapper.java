@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface TaskMapper extends BaseMapper<Task> {
     
-    @Select("SELECT t.*, p.project_name, " +
+    @Select("SELECT t.*, p.project_name, p.manager_id as projectManagerId, " +
             "u1.real_name as assignee_name, " +
             "u2.real_name as reviewer_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
@@ -30,7 +30,7 @@ public interface TaskMapper extends BaseMapper<Task> {
             "WHERE t.id = #{id}")
     Task selectTaskWithDetails(@Param("id") Long id);
     
-    @Select("SELECT t.*, p.project_name, " +
+    @Select("SELECT t.*, p.project_name, p.manager_id as projectManagerId, " +
             "u1.real_name as assignee_name, " +
             "u2.real_name as reviewer_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
@@ -50,7 +50,7 @@ public interface TaskMapper extends BaseMapper<Task> {
     IPage<Task> selectTasksWithDetails(Page<Task> page);
     
     @Select("<script>" +
-            "SELECT t.*, p.project_name, " +
+            "SELECT t.*, p.project_name, p.manager_id as projectManagerId, " +
             "u1.real_name as assignee_name, " +
             "u2.real_name as reviewer_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
@@ -75,7 +75,7 @@ public interface TaskMapper extends BaseMapper<Task> {
     IPage<Task> selectTasksWithDetailsAndKeyword(Page<Task> page, @Param("keyword") String keyword);
     
     @Select("<script>" +
-            "SELECT t.*, p.project_name, " +
+            "SELECT t.*, p.project_name, p.manager_id as projectManagerId, " +
             "u1.real_name as assignee_name, " +
             "u2.real_name as reviewer_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +
@@ -124,7 +124,7 @@ public interface TaskMapper extends BaseMapper<Task> {
     /**
      * 获取带有详细信息的子任务列表
      */
-    @Select("SELECT t.*, p.project_name, " +
+    @Select("SELECT t.*, p.project_name, p.manager_id as projectManagerId, " +
             "u1.real_name as assignee_name, " +
             "u2.real_name as reviewer_name, " +
             "COALESCE(te_stats.actual_hours, 0) as actual_hours, " +

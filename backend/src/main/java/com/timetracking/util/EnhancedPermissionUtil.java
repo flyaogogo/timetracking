@@ -18,6 +18,7 @@ public class EnhancedPermissionUtil {
     
     private static ProjectMemberMapper projectMemberMapper;
     private static ProjectRolePermissionMapper permissionMapper;
+    private static com.timetracking.mapper.ProjectMapper projectMapper;
     
     @Autowired
     public void setProjectMemberMapper(ProjectMemberMapper projectMemberMapper) {
@@ -27,6 +28,11 @@ public class EnhancedPermissionUtil {
     @Autowired
     public void setPermissionMapper(ProjectRolePermissionMapper permissionMapper) {
         EnhancedPermissionUtil.permissionMapper = permissionMapper;
+    }
+    
+    @Autowired
+    public void setProjectMapper(com.timetracking.mapper.ProjectMapper projectMapper) {
+        EnhancedPermissionUtil.projectMapper = projectMapper;
     }
     
     /**
@@ -84,8 +90,21 @@ public class EnhancedPermissionUtil {
         
         // 2. 检查项目内项目经理权限
         try {
+            // 检查project_members表中的记录
             ProjectMember member = projectMemberMapper.selectByProjectAndUser(projectId, userId);
-            return member != null && Boolean.TRUE.equals(member.getIsProjectManager()) && isPermissionActive(member);
+            if (member != null && Boolean.TRUE.equals(member.getIsProjectManager()) && isPermissionActive(member)) {
+                return true;
+            }
+            
+            // 3. 检查projects表中的manager_id字段
+            if (projectMapper != null) {
+                Long managerId = projectMapper.getProjectManagerId(projectId);
+                if (managerId != null && managerId.equals(userId)) {
+                    return true;
+                }
+            }
+            
+            return false;
         } catch (Exception e) {
             return false;
         }

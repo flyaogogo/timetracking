@@ -3,7 +3,7 @@
 <mapper namespace="com.timetracking.mapper.TaskMapper">
     
     <select id="selectTasksByProject" resultType="com.timetracking.entity.Task">
-        SELECT t.*, p.project_name,
+        SELECT t.*, p.project_name, p.manager_id as projectManagerId,
                u1.real_name as assignee_name,
                u2.real_name as reviewer_name,
                COALESCE(te_stats.actual_hours, 0) as actual_hours,
@@ -25,7 +25,7 @@
     </select>
     
     <select id="selectUserRelatedTasks" resultType="com.timetracking.entity.Task">
-        SELECT t.*, p.project_name,
+        SELECT t.*, p.project_name, p.manager_id as projectManagerId,
                u1.real_name as assignee_name,
                u2.real_name as reviewer_name,
                COALESCE(te_stats.actual_hours, 0) as actual_hours,
@@ -55,7 +55,7 @@
     </select>
     
     <select id="selectUserRelatedTasksByProject" resultType="com.timetracking.entity.Task">
-        SELECT t.*, p.project_name,
+        SELECT t.*, p.project_name, p.manager_id as projectManagerId,
                u1.real_name as assignee_name,
                u2.real_name as reviewer_name,
                COALESCE(te_stats.actual_hours, 0) as actual_hours,
@@ -85,7 +85,7 @@
     </select>
     
     <select id="selectUserRelatedTasksWithParentFilter" resultType="com.timetracking.entity.Task">
-        SELECT t.*, p.project_name,
+        SELECT t.*, p.project_name, p.manager_id as projectManagerId,
                u1.real_name as assignee_name,
                u2.real_name as reviewer_name,
                COALESCE(te_stats.actual_hours, 0) as actual_hours,

@@ -62,3 +62,13 @@ export function batchAddProjectMembers(data) {
     data
   })
 }
+
+/**
+ * 获取用户在所有项目中的角色信息
+ */
+export function getUserProjectRoles(userId) {
+  return request({
+    url: `/project-members/user/${userId}/roles`,
+    method: 'get'
+  })
+}

@@ -319,9 +319,6 @@
             v-model="addMemberForm.userId" 
             placeholder="请选择用户"
             filterable
-            remote
-            :remote-method="searchUsers"
-            :loading="userSearchLoading"
           >
             <el-option
               v-for="user in availableUsers"
@@ -742,7 +739,7 @@ const searchUsers = async (query) => {
   try {
     const response = await getUserList({
       current: 1,
-      size: 20,
+      size: 100,
       keyword: query
     })
     

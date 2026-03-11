@@ -175,6 +175,8 @@
         </el-table-column>
         <el-table-column type="selection" width="55" />
         
+        <el-table-column prop="id" label="ID" width="80" />
+        
         <el-table-column prop="taskName" label="任务名称" width="180">
           <template #default="{ row }">
             <div class="task-name-wrapper">
@@ -698,6 +700,83 @@
         </el-button>
       </template>
     </el-dialog>
+    
+    <!-- 任务详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="`任务详情 - ${detailTask?.taskName || ''}`"
+      width="800px"
+    >
+      <div v-if="detailTask" class="task-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="任务ID">{{ detailTask.id }}</el-descriptions-item>
+          <el-descriptions-item label="任务名称">{{ detailTask.taskName }}</el-descriptions-item>
+          <el-descriptions-item label="所属项目">{{ detailTask.projectName }}</el-descriptions-item>
+          <el-descriptions-item label="父任务">
+            {{ getParentTaskName(detailTask.parentId) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="任务类型">
+            <el-tag :type="getTaskTypeColor(detailTask.taskType)" size="small">
+              {{ getTaskTypeText(detailTask.taskType) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="优先级">
+            <el-rate
+              v-model="detailTask.priority"
+              :max="5"
+              disabled
+              show-score
+              text-color="#ff9900"
+              score-template="{value}"
+            />
+          </el-descriptions-item>
+          <el-descriptions-item label="执行人">{{ detailTask.assigneeName }}</el-descriptions-item>
+          <el-descriptions-item label="审核人">{{ detailTask.reviewerName }}</el-descriptions-item>
+          <el-descriptions-item label="预估工时">{{ detailTask.estimatedHours }}h</el-descriptions-item>
+          <el-descriptions-item label="实际工时">{{ detailTask.actualHours || 0 }}h</el-descriptions-item>
+          <el-descriptions-item label="开始日期">{{ detailTask.startDate }}</el-descriptions-item>
+          <el-descriptions-item label="结束日期">{{ detailTask.endDate }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusColor(detailTask.status)">
+              {{ getStatusText(detailTask.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="进度">
+            <el-progress :percentage="detailTask.progress" stroke-width="10" />
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">{{ detailTask.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间" :span="2">{{ detailTask.updateTime }}</el-descriptions-item>
+          <el-descriptions-item label="任务描述" :span="2">
+            <div class="task-description">{{ detailTask.description || '无' }}</div>
+          </el-descriptions-item>
+        </el-descriptions>
+        
+        <div v-if="getChildTasks(detailTask.id).length > 0" class="child-tasks-section">
+          <h4>子任务列表</h4>
+          <el-table :data="getChildTasks(detailTask.id)" style="width: 100%">
+            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="taskName" label="任务名称" width="200" />
+            <el-table-column prop="assigneeName" label="执行人" width="120" />
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="getStatusColor(row.status)">
+                  {{ getStatusText(row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="progress" label="进度" width="120">
+              <template #default="{ row }">
+                <el-progress :percentage="row.progress" stroke-width="6" />
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+      <div v-else class="loading">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>加载中...</span>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -711,7 +790,7 @@ import { getProjectList, getProjectMembers } from '@/api/project'
 import { getUserList } from '@/api/user'
 import { getUserProjectRoles } from '@/api/projectMember'
 import { EnhancedPermissionUtil } from '@/utils/enhancedPermissions'
-import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
+import { InfoFilled, WarningFilled, Upload, Document, Plus, Download, Search, Edit, TrendCharts, Timer, Delete, ArrowDown, ArrowRight, Loading } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -738,6 +817,8 @@ const activeTaskCollapse = ref([]) // 任务表单折叠面板控制
 const childTasks = ref({}) // 存储子任务数据，键为父任务ID
 const loadingChildTasks = ref({}) // 存储子任务加载状态
 const userProjectRoles = ref({}) // 存储用户在项目中的角色信息
+const detailDialogVisible = ref(false) // 任务详情对话框可见性
+const detailTask = ref(null) // 当前查看的任务详情
 
 // 处理任务数据，只返回父任务
 const processedTasks = computed(() => {
@@ -1136,8 +1217,11 @@ const editTask = (row) => {
 }
 
 // 查看任务详情
-const viewTask = (row) => {
-  console.log('查看任务:', row)
+const viewTask = async (row) => {
+  detailTask.value = row
+  detailDialogVisible.value = true
+  // 加载子任务数据
+  await loadChildTasks(row.id)
 }
 
 // 加载子任务
@@ -1811,6 +1895,44 @@ onMounted(async () => {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   width: calc(100% - 30px);
   min-width: 600px;
+}
+
+/* 任务详情样式 */
+.task-detail {
+  padding: 10px 0;
+}
+
+.task-description {
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.child-tasks-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
+}
+
+.child-tasks-section h4 {
+  margin-bottom: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #909399;
+}
+
+.loading .is-loading {
+  margin-right: 10px;
+  font-size: 20px;
+  animation: el-rotate 1s linear infinite;
 }
 
 /* 子任务名称样式 */

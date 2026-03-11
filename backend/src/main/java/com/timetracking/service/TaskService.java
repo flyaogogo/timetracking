@@ -582,7 +582,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         org.apache.poi.xssf.usermodel.XSSFSheet sheet = workbook.createSheet("任务导入模板");
         
         // 设置列宽
-        int[] columnWidths = {20, 15, 30, 15, 10, 12, 12, 12, 15, 15, 20};
+        int[] columnWidths = {20, 15, 15, 30, 15, 10, 12, 12, 12, 15, 15, 20};
         for (int i = 0; i < columnWidths.length; i++) {
             sheet.setColumnWidth(i, columnWidths[i] * 256);
         }
@@ -633,7 +633,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 创建表头行
         org.apache.poi.xssf.usermodel.XSSFRow headerRow = sheet.createRow(0);
-        String[] headers = {"任务名称", "项目ID", "任务描述", "任务类型", "优先级", "执行人ID", "审核人ID", "预估工时", "开始日期", "结束日期", "备注"};
+        String[] headers = {"任务名称", "项目ID", "父任务ID", "任务描述", "任务类型", "优先级", "执行人ID", "审核人ID", "预估工时", "开始日期", "结束日期", "备注"};
         for (int i = 0; i < headers.length; i++) {
             org.apache.poi.xssf.usermodel.XSSFCell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
@@ -642,7 +642,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 创建必填说明行
         org.apache.poi.xssf.usermodel.XSSFRow requiredRow = sheet.createRow(1);
-        String[] requiredTexts = {"必填", "必填，项目编号", "可选，任务详细描述", "必填，下拉选择", "必填，1-5", "必填，用户ID", "可选，用户ID", "可选，如8.5", "可选，格式：yyyy-MM-dd", "可选，格式：yyyy-MM-dd", "填写说明"};
+        String[] requiredTexts = {"必填", "必填，项目编号", "可选，父任务编号", "可选，任务详细描述", "必填，下拉选择", "必填，1-5", "必填，用户ID", "可选，用户ID", "可选，如8.5", "可选，格式：yyyy-MM-dd", "可选，格式：yyyy-MM-dd", "填写说明"};
         for (int i = 0; i < requiredTexts.length; i++) {
             org.apache.poi.xssf.usermodel.XSSFCell cell = requiredRow.createCell(i);
             cell.setCellValue(requiredTexts[i]);
@@ -651,7 +651,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         
         // 创建示例数据行
         org.apache.poi.xssf.usermodel.XSSFRow exampleRow = sheet.createRow(2);
-        String[] exampleData = {"开发登录功能", "1", "实现用户登录认证", "DEVELOPMENT", "3", "1", "2", "8.0", "2023-01-01", "2023-01-02", "示例数据，可删除"};
+        String[] exampleData = {"开发登录功能", "1", "", "实现用户登录认证", "DEVELOPMENT", "3", "1", "2", "8.0", "2023-01-01", "2023-01-02", "示例数据，可删除"};
         for (int i = 0; i < exampleData.length; i++) {
             org.apache.poi.xssf.usermodel.XSSFCell cell = exampleRow.createCell(i);
             cell.setCellValue(exampleData[i]);
@@ -662,7 +662,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
         org.apache.poi.xssf.usermodel.XSSFRow noteTitleRow = sheet.createRow(4);
         noteTitleRow.createCell(0).setCellValue("填写说明：");
         noteTitleRow.getCell(0).setCellStyle(noteStyle);
-        sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(4, 4, 0, 10));
+        sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(4, 4, 0, 11));
         
         String[] notes = {
             "1.请使用下拉列表选择任务类型和优先级，确保数据格式正确",
@@ -675,7 +675,7 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
             org.apache.poi.xssf.usermodel.XSSFRow noteRow = sheet.createRow(5 + i);
             noteRow.createCell(0).setCellValue(notes[i]);
             noteRow.getCell(0).setCellStyle(noteStyle);
-            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(5 + i, 5 + i, 0, 10));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(5 + i, 5 + i, 0, 11));
         }
         
         // 设置数据验证（下拉列表）
@@ -791,12 +791,16 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                     }
                     task.setProjectId(projectId);
                     
-                    // 读取任务描述（列C，索引2）
-                    String description = getCellValue(row.getCell(2));
+                    // 读取父任务ID（列C，索引2）
+                    Long parentId = parseLong(getCellValue(row.getCell(2)));
+                    task.setParentId(parentId);
+                    
+                    // 读取任务描述（列D，索引3）
+                    String description = getCellValue(row.getCell(3));
                     task.setDescription(description);
                     
-                    // 读取任务类型（列D，索引3）
-                    String taskTypeStr = getCellValue(row.getCell(3));
+                    // 读取任务类型（列E，索引4）
+                    String taskTypeStr = getCellValue(row.getCell(4));
                     if (taskTypeStr == null || taskTypeStr.trim().isEmpty()) {
                         throw new IllegalArgumentException("任务类型不能为空");
                     }
@@ -808,8 +812,8 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                     }
                     task.setTaskType(taskType);
                     
-                    // 读取优先级（列E，索引4）
-                    Integer priority = parseInt(getCellValue(row.getCell(4)));
+                    // 读取优先级（列F，索引5）
+                    Integer priority = parseInt(getCellValue(row.getCell(5)));
                     if (priority == null) {
                         throw new IllegalArgumentException("优先级不能为空");
                     }
@@ -818,27 +822,27 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                     }
                     task.setPriority(priority);
                     
-                    // 读取执行人ID（列F，索引5）
-                    Long assigneeId = parseLong(getCellValue(row.getCell(5)));
+                    // 读取执行人ID（列G，索引6）
+                    Long assigneeId = parseLong(getCellValue(row.getCell(6)));
                     if (assigneeId == null) {
                         throw new IllegalArgumentException("执行人ID不能为空");
                     }
                     task.setAssigneeId(assigneeId);
                     
-                    // 读取审核人ID（列G，索引6）
-                    Long reviewerId = parseLong(getCellValue(row.getCell(6)));
+                    // 读取审核人ID（列H，索引7）
+                    Long reviewerId = parseLong(getCellValue(row.getCell(7)));
                     task.setReviewerId(reviewerId);
                     
-                    // 读取预估工时（列H，索引7）
-                    Double estimatedHoursDouble = parseDouble(getCellValue(row.getCell(7)));
+                    // 读取预估工时（列I，索引8）
+                    Double estimatedHoursDouble = parseDouble(getCellValue(row.getCell(8)));
                     java.math.BigDecimal estimatedHours = java.math.BigDecimal.ZERO;
                     if (estimatedHoursDouble != null) {
                         estimatedHours = java.math.BigDecimal.valueOf(estimatedHoursDouble);
                     }
                     task.setEstimatedHours(estimatedHours);
                     
-                    // 读取开始日期（列I，索引8）
-                    org.apache.poi.ss.usermodel.Cell startCell = row.getCell(8);
+                    // 读取开始日期（列J，索引9）
+                    org.apache.poi.ss.usermodel.Cell startCell = row.getCell(9);
                     if (startCell != null) {
                         try {
                             java.time.LocalDate startDate;
@@ -864,8 +868,8 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                         }
                     }
                     
-                    // 读取结束日期（列J，索引9）
-                    org.apache.poi.ss.usermodel.Cell endCell = row.getCell(9);
+                    // 读取结束日期（列K，索引10）
+                    org.apache.poi.ss.usermodel.Cell endCell = row.getCell(10);
                     if (endCell != null) {
                         try {
                             java.time.LocalDate endDate;
@@ -891,8 +895,8 @@ public class TaskService extends ServiceImpl<TaskMapper, Task> {
                         }
                     }
                     
-                    // 读取备注（列K，索引10）
-                    String remark = getCellValue(row.getCell(10));
+                    // 读取备注（列L，索引11）
+                    String remark = getCellValue(row.getCell(11));
                     // 备注字段可以保存到task的其他字段，或者如果有remark字段可以直接设置
                     // task.setRemark(remark);
                     

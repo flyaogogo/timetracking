@@ -104,6 +104,10 @@
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item command="detail">
+                    <el-icon><InfoFilled /></el-icon>
+                    详情
+                  </el-dropdown-item>
                   <el-dropdown-item command="edit">
                     <el-icon><Edit /></el-icon>
                     编辑
@@ -402,6 +406,66 @@
         </el-button>
       </template>
     </el-dialog>
+    
+    <!-- 项目详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      :title="`项目详情 - ${detailProject?.projectName || ''}`"
+      width="800px"
+    >
+      <div v-if="detailProject" class="project-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="项目ID">{{ detailProject.id }}</el-descriptions-item>
+          <el-descriptions-item label="项目名称">{{ detailProject.projectName }}</el-descriptions-item>
+          <el-descriptions-item label="项目编号">{{ detailProject.projectCode }}</el-descriptions-item>
+          <el-descriptions-item label="项目类型">
+            <el-tag :type="getProjectTypeColor(detailProject.projectType)" size="small">
+              {{ getProjectTypeText(detailProject.projectType) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="优先级">
+            <el-tag :type="getPriorityColor(detailProject.priority)" size="small">
+              {{ getPriorityText(detailProject.priority) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="项目经理">{{ detailProject.managerName }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusColor(detailProject.status)">
+              {{ getStatusText(detailProject.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="延期天数">
+            <span v-if="detailProject.delayDays > 0" class="delay-text">
+              {{ detailProject.delayDays }}天
+            </span>
+            <span v-else class="normal-text">正常</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="预估工时">{{ detailProject.estimatedHours }}h / {{ Math.ceil(detailProject.estimatedHours / 8) }}天</el-descriptions-item>
+          <el-descriptions-item label="实际工时">{{ detailProject.actualHours || 0 }}h / {{ Math.ceil((detailProject.actualHours || 0) / 8) }}天</el-descriptions-item>
+          <el-descriptions-item label="开始日期">{{ detailProject.startDate }}</el-descriptions-item>
+          <el-descriptions-item label="结束日期">{{ detailProject.endDate }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间" :span="2">{{ detailProject.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间" :span="2">{{ detailProject.updateTime }}</el-descriptions-item>
+          <el-descriptions-item label="项目描述" :span="2">
+            <div class="project-description">{{ detailProject.description || '无' }}</div>
+          </el-descriptions-item>
+          
+          <!-- 财务信息 -->
+          <el-descriptions-item label="合同金额" :span="2">
+            ¥{{ detailProject.contractAmount || 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="预算金额" :span="2">
+            ¥{{ detailProject.budgetAmount || 0 }}
+          </el-descriptions-item>
+          <el-descriptions-item label="客户名称" :span="2">{{ detailProject.clientName || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="合同编号" :span="2">{{ detailProject.contractNumber || '无' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <div v-else class="loading">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span>加载中...</span>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -420,7 +484,9 @@ import {
   User, 
   ArrowDown, 
   QuestionFilled,
-  Setting
+  Setting,
+  InfoFilled,
+  Loading
 } from '@element-plus/icons-vue'
 import { getProjectList, createProject, updateProject, deleteProject as deleteProjectApi, getUserProjects } from '@/api/project'
 import { getUserList } from '@/api/user'
@@ -438,6 +504,8 @@ const projects = ref([])
 const selectedProjects = ref([])
 const managers = ref([])
 const activeCollapse = ref([]) // 折叠面板控制
+const detailDialogVisible = ref(false) // 项目详情对话框可见性
+const detailProject = ref(null) // 当前查看的项目详情
 
 const pagination = reactive({
   current: 1,
@@ -733,6 +801,9 @@ const viewStatusManagement = (row) => {
 // 处理操作命令
 const handleCommand = (command, row) => {
   switch (command) {
+    case 'detail':
+      viewProjectDetail(row)
+      break
     case 'edit':
       editProject(row)
       break
@@ -752,6 +823,12 @@ const handleCommand = (command, row) => {
       deleteProject(row)
       break
   }
+}
+
+// 查看项目详情
+const viewProjectDetail = (row) => {
+  detailProject.value = row
+  detailDialogVisible.value = true
 }
 
 // 获取项目类型颜色
@@ -909,5 +986,30 @@ onMounted(() => {
   margin-left: 8px;
   color: #909399;
   cursor: help;
+}
+
+/* 项目详情样式 */
+.project-detail {
+  padding: 10px 0;
+}
+
+.project-description {
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #909399;
+}
+
+.loading .is-loading {
+  margin-right: 10px;
+  font-size: 20px;
+  animation: el-rotate 1s linear infinite;
 }
 </style>
